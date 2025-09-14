@@ -422,11 +422,8 @@ const Dashboard = () => {
     'font-medium', 'tracking-wide', 'select-none', 'active:scale-100', 'disabled:opacity-60', 'disabled:cursor-not-allowed'
   ].join(' ');
 
-  // ...existing code...
-
   // --- Keyword Alerts Widget (fixed scale) ---
   // Place this inside your return JSX where the widget is rendered
-  // ...existing code...
   {/* Keyword Alerts Widget */}
   <div className="lg:col-span-1">
     <div className="keyword-alerts-widget widget-container group relative p-6 rounded-2xl border border-white/20
@@ -504,23 +501,24 @@ const Dashboard = () => {
       </div>
     </div>
   </div>
-  // ...existing code...
-
   return (
-  <div className="min-h-screen p-8 text-white bg-black" style={{ fontFamily }}>
-     <style>{`
-       body, html, #root {
-         font-family: 'Poppins', sans-serif !important;
-         font-weight: 400;
-       }
-       h1, h2, h3, h4, h5, h6 {
-         font-family: 'Poppins', sans-serif !important;
-         font-weight: 700;
-       }
-       .dashboard-heading { font-weight: 700; }
-       .dashboard-subheading { font-weight: 600; }
-       .dashboard-body { font-weight: 400; }
-       
+  <div className="min-h-screen w-full text-white bg-black" style={{ fontFamily }}>
+    <style>{`
+      body, html, #root {
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 400;
+        margin: 0;
+        padding: 0;
+        background: #000;
+      }
+      h1, h2, h3, h4, h5, h6 {
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 700;
+      }
+      .dashboard-heading { font-weight: 700; }
+      .dashboard-subheading { font-weight: 600; }
+      .dashboard-body { font-weight: 400; }
+      
        /* Custom scrollbar styles to prevent glitching */
        .scrollbar-thin {
          scrollbar-width: thin;
@@ -567,42 +565,39 @@ const Dashboard = () => {
          background-color: rgba(255, 255, 255, 0.2) !important;
        }
      `}</style>
-       <div className="relative mb-12">
-         {/* 3D Background Elements for Header */}
-          <div className="absolute -top-20 -left-20 w-40 h-40 bg-white/5 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
-         
-         <div className="flex justify-between items-center relative z-10">
-           <div className="group">
-             <h1 className="text-5xl dashboard-heading text-white tracking-tight drop-shadow-2xl group-hover:scale-105 transform transition-all duration-500">
-          <span className="text-blue-400 font-extrabold">M</span>ailPilot Dashboard
-        </h1>
-             <div className="absolute -bottom-2 left-0 w-full h-1 bg-blue-500 rounded-full opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-           </div>
-           <div className="flex gap-4">
+    <div className="relative mb-12 w-full px-2 sm:px-4 lg:px-8">
+      {/* 3D Background Elements for Header */}
+      <div className="absolute -top-20 -left-20 w-40 h-40 bg-white/5 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="flex justify-between items-center relative z-10">
+        <div className="group">
+          <h1 className="text-5xl dashboard-heading text-white tracking-tight drop-shadow-2xl group-hover:scale-105 transform transition-all duration-500">
+            <span className="text-blue-400 font-extrabold">M</span>ailPilot Dashboard
+          </h1>
+          <div className="absolute -bottom-2 left-0 w-full h-1 bg-blue-500 rounded-full opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+        </div>
+        <div className="flex gap-4">
           <button
             onClick={handleSyncEmails}
-               className="group relative px-6 py-3 rounded-xl border border-white/30 bg-white/10 text-white backdrop-blur-sm shadow-lg transition-all duration-300 hover:border-white/50 hover:bg-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black font-medium tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+            className="group relative px-6 py-3 rounded-xl border border-white/30 bg-white/10 text-white backdrop-blur-sm shadow-lg transition-all duration-300 hover:border-white/50 hover:bg-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black font-medium tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
           >
-               <span className="relative z-10">{loading ? "Syncing..." : "Sync Emails"}</span>
-                <div className="absolute inset-0 bg-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <span className="relative z-10">{loading ? "Syncing..." : "Sync Emails"}</span>
+            <div className="absolute inset-0 bg-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </button>
           <button
             onClick={handleLogout}
-               className="group relative px-6 py-3 rounded-xl border border-white/30 bg-white/10 text-white backdrop-blur-sm shadow-lg transition-all duration-300 hover:border-white/50 hover:bg-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black font-medium tracking-wide"
+            className="group relative px-6 py-3 rounded-xl border border-white/30 bg-white/10 text-white backdrop-blur-sm shadow-lg transition-all duration-300 hover:border-white/50 hover:bg-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black font-medium tracking-wide"
           >
-               <span className="relative z-10">Logout</span>
-                <div className="absolute inset-0 bg-white/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <span className="relative z-10">Logout</span>
+            <div className="absolute inset-0 bg-white/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </button>
         </div>
       </div>
-       </div>
-
-   <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-     {/* Stats Row */}
-     <div className="lg:col-span-1">
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 w-full px-2 sm:px-4 lg:px-8">
+      {/* Stats Row */}
+     <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
         {/* Unread Emails Widget */}
        <div className="widget-container group relative p-6 rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:border-white/40 hover:-translate-y-1 transform transition-all duration-300 overflow-hidden">
          {/* 3D Background Elements */}
@@ -626,7 +621,7 @@ const Dashboard = () => {
         </div>
 
 {/* Important Emails Widget */}
-<div className="lg:col-span-2">
+<div className="md:col-span-1 lg:col-span-2 xl:col-span-3">
   <div className="important-emails-widget widget-container group relative p-6 rounded-2xl border border-white/20 
                   bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md 
                   shadow-[0_8px_32px_rgba(0,0,0,0.3)] 
@@ -677,7 +672,7 @@ const Dashboard = () => {
 
 
 {/* Keyword Alerts Widget */}
-<div className="lg:col-span-1">
+<div className="md:col-span-1 lg:col-span-1 xl:col-span-2">
   <div className="keyword-alerts-widget widget-container group relative p-6 rounded-2xl border border-white/20 
 
             bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md 
@@ -734,7 +729,7 @@ const Dashboard = () => {
             <span className="text-white text-base font-medium">{kw}</span>
             <button
               onClick={() => handleRemoveKeyword(kw)}
-              className="flex items-center justify-center px-3 h-9 min-w-[70px] rounded-lg border border-red-500/50 bg-red-500/20 text-red-200 text-base font-medium hover:bg-red-500/30 hover:border-red-500/70 transition-all duration-200 opacity-100"
+              className="flex items-center justify-center px-3 h-9 min-w-[70px] rounded-lg border border-red-500/50 bg-red-500/20 text-red-200 text-base font-medium hover:bg-red-500/30 hover:border-red-500/70 transition-all duration-200"
               style={{ boxSizing: 'border-box' }}
             >
               Remove
@@ -753,7 +748,7 @@ const Dashboard = () => {
 
 
      {/* Daily Summary: full width */}
-     <div className="lg:col-span-4">
+     <div className="md:col-span-2 lg:col-span-3 xl:col-span-6">
        <div className="widget-container group relative p-6 rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:border-white/40 hover:-translate-y-1 transform transition-all duration-300 overflow-hidden">
          {/* 3D Background Elements */}
           <div className="absolute -top-12 -left-12 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
@@ -773,7 +768,7 @@ const Dashboard = () => {
        </div>
         </div>
 
-     <div className="lg:col-span-4">
+     <div className="md:col-span-2 lg:col-span-3 xl:col-span-6">
        <div className="widget-container group relative p-6 rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:border-white/40 hover:-translate-y-1 transform transition-all duration-300 overflow-hidden">
          {/* 3D Background Elements */}
           <div className="absolute -top-10 -left-10 w-28 h-28 bg-white/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
