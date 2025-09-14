@@ -169,7 +169,7 @@ def healthz():
 # CORS
 origins = [
     "http://localhost:5173",
-    "https://your-frontend.vercel.app"   # 👈 add your actual Vercel link here
+    "https://mail-pilot-eight.vercel.app"   # 👈 add your actual Vercel link here
 ]
 
 app.add_middleware(
