@@ -1,6 +1,3 @@
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
-print("FRONTEND_URL =", FRONTEND_URL)
-
 
 def get_inbox_unread_count(access_token: str) -> int:
     url = "https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX"
@@ -33,6 +30,9 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 load_dotenv()  # loads CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, SUPABASE_URL, SUPABASE_KEY
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+print("FRONTEND_URL =", FRONTEND_URL)
 
 # Validate required environment variables
 required_env_vars = ["CLIENT_ID", "CLIENT_SECRET", "REDIRECT_URI", "SUPABASE_URL", "SUPABASE_KEY"]
