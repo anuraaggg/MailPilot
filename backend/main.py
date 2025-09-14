@@ -593,6 +593,42 @@ def remove_user_keyword(user_id: str, keyword: str) -> Dict:
         print(f"Remove keyword error: {e}")
         return {"error": f"Failed to remove keyword: {str(e)}"}
 
+def get_active_users_from_database() -> Dict:
+    """Get unique user IDs from the database to count active users and accounts"""
+    try:
+        # Get unique user IDs from emails table
+        emails_result = supabase.table("emails").select("user_id").execute()
+        email_user_ids = set()
+        if emails_result.data:
+            email_user_ids = {row["user_id"] for row in emails_result.data if row["user_id"]}
+        
+        # Get unique user IDs from keywords table
+        keywords_result = supabase.table("keywords").select("user_id").execute()
+        keyword_user_ids = set()
+        if keywords_result.data:
+            keyword_user_ids = {row["user_id"] for row in keywords_result.data if row["user_id"]}
+        
+        # Combine both sets to get all unique users
+        all_unique_users = email_user_ids.union(keyword_user_ids)
+        
+        print(f"Active users from database: {len(all_unique_users)} unique users")
+        print(f"Users with emails: {len(email_user_ids)}")
+        print(f"Users with keywords: {len(keyword_user_ids)}")
+        
+        return {
+            "activeUsers": len(all_unique_users),
+            "activeAccounts": len(all_unique_users),  # Same as users for now
+            "unique_user_ids": list(all_unique_users)
+        }
+    except Exception as e:
+        print(f"Error getting active users from database: {e}")
+        # Fallback to in-memory count
+        return {
+            "activeUsers": len(user_tokens),
+            "activeAccounts": len(user_tokens),
+            "unique_user_ids": list(user_tokens.keys())
+        }
+
 def get_important_emails(user_id: str = "demo_user", limit: int = 3) -> List[Dict]:
     """Get emails that contain user's keywords"""
     try:
@@ -1007,13 +1043,16 @@ def get_dashboard(request: Request):
             daily_summary = generate_daily_summary(todays_emails, weekly_email_count, user_keywords)
             print(f"DEBUG: Generated summary: {daily_summary}")
 
+        # Get active users from database
+        active_users_data = get_active_users_from_database()
+        
         return {
             "unreadEmails": weekly_email_count,
             "importantEmails": formatted_important_emails,
             "keywords": user_keywords,
             "dailySummary": daily_summary,
-            "activeUsers": len(user_tokens),
-            "activeAccounts": len(user_tokens),
+            "activeUsers": active_users_data["activeUsers"],
+            "activeAccounts": active_users_data["activeAccounts"],
             "recentEmails": formatted_emails
         }
         
@@ -1197,9 +1236,17 @@ def logout():
 @app.get("/captcha/config")
 def get_captcha_config():
     """Get reCAPTCHA site key for frontend"""
+    site_key = os.getenv("RECAPTCHA_SITE_KEY")
+    secret_key = os.getenv("RECAPTCHA_SECRET_KEY")
+    
     return {
-        "site_key": os.getenv("RECAPTCHA_SITE_KEY"),
-        "enabled": bool(RECAPTCHA_SECRET_KEY)
+        "site_key": site_key,
+        "enabled": bool(secret_key),
+        "debug": {
+            "has_site_key": bool(site_key),
+            "has_secret_key": bool(secret_key),
+            "site_key_length": len(site_key) if site_key else 0
+        }
     }
 @app.get("/debug/primary-sample")
 def debug_primary_sample():
@@ -1324,3 +1371,49 @@ def debug_force_sync():
         raise HTTPException(status_code=500, detail=result["error"])
     
     return result
+
+@app.get("/debug/captcha")
+def debug_captcha():
+    """Debug endpoint to check captcha configuration"""
+    site_key = os.getenv("RECAPTCHA_SITE_KEY")
+    secret_key = os.getenv("RECAPTCHA_SECRET_KEY")
+    
+    return {
+        "environment_variables": {
+            "RECAPTCHA_SITE_KEY": "SET" if site_key else "NOT SET",
+            "RECAPTCHA_SECRET_KEY": "SET" if secret_key else "NOT SET"
+        },
+        "configuration": {
+            "site_key": site_key,
+            "secret_key": "***" if secret_key else None,
+            "enabled": bool(secret_key)
+        },
+        "instructions": {
+            "setup": "To enable captcha, set RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY environment variables",
+            "site_key": "Get from Google reCAPTCHA admin console",
+            "secret_key": "Get from Google reCAPTCHA admin console (keep secret)"
+        }
+    }
+
+@app.get("/debug/active-users")
+def debug_active_users():
+    """Debug endpoint to check active users from database"""
+    try:
+        # Get active users from database
+        active_users_data = get_active_users_from_database()
+        
+        # Also get in-memory count for comparison
+        in_memory_count = len(user_tokens)
+        
+        return {
+            "database_active_users": active_users_data,
+            "in_memory_count": in_memory_count,
+            "in_memory_user_ids": list(user_tokens.keys()),
+            "comparison": {
+                "database_count": active_users_data["activeUsers"],
+                "in_memory_count": in_memory_count,
+                "difference": active_users_data["activeUsers"] - in_memory_count
+            }
+        }
+    except Exception as e:
+        return {"error": str(e)}

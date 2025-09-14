@@ -101,7 +101,13 @@ const Dashboard = () => {
 
   const fetchCaptchaConfig = async () => {
     try {
-  const res = await fetch(`${API_URL}/captcha/config`);
+      const res = await fetch(`${API_URL}/captcha/config`);
+      if (!res.ok) {
+        console.log("Captcha config endpoint not available:", res.status);
+        setCaptchaConfig({ enabled: false, site_key: null });
+        return;
+      }
+      
       const config = await res.json();
       console.log("Captcha config received:", config);
       setCaptchaConfig(config);
@@ -139,16 +145,17 @@ const Dashboard = () => {
           }, 10000);
         }
       } else {
-        console.log("Captcha disabled or no site key");
+        console.log("Captcha disabled or no site key - config:", config);
       }
     } catch (err) {
       console.error("Failed to fetch captcha config:", err);
+      setCaptchaConfig({ enabled: false, site_key: null });
     }
   };
 
   // Auto-render captcha when modal opens
   useEffect(() => {
-    if (showCaptcha && captchaConfig?.site_key && !captchaRendered) {
+    if (showCaptcha && captchaConfig?.enabled && captchaConfig?.site_key && !captchaRendered) {
       console.log("Modal opened, attempting to render captcha...");
       
       const renderCaptcha = () => {
@@ -164,6 +171,8 @@ const Dashboard = () => {
             console.log("Captcha rendered successfully");
           } catch (error) {
             console.error("Error rendering captcha:", error);
+            // If rendering fails, try again after a delay
+            setTimeout(renderCaptcha, 1000);
           }
         } else {
           console.log("reCAPTCHA not ready or container not found, retrying in 500ms...");
@@ -220,8 +229,8 @@ const Dashboard = () => {
       console.log("Sync button clicked, captchaConfig:", captchaConfig, "captchaResponse:", captchaResponse);
       setLoading(true);
       
-      // If captcha is enabled, show captcha first
-      if (captchaConfig?.enabled && !captchaResponse) {
+      // If captcha is enabled and configured, show captcha first
+      if (captchaConfig?.enabled && captchaConfig?.site_key && !captchaResponse) {
         console.log("Showing captcha modal");
         setShowCaptcha(true);
         setLoading(false);
@@ -503,6 +512,7 @@ const Dashboard = () => {
   </div>
   return (
   <div className="min-h-screen w-full text-white bg-black" style={{ fontFamily }}>
+    <div className="w-full max-w-7xl mx-auto">
     <style>{`
       body, html, #root {
         font-family: 'Poppins', sans-serif !important;
@@ -565,7 +575,7 @@ const Dashboard = () => {
          background-color: rgba(255, 255, 255, 0.2) !important;
        }
      `}</style>
-    <div className="relative mb-12 w-full px-2 sm:px-4 lg:px-8">
+    <div className="relative mb-12 w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
       {/* 3D Background Elements for Header */}
       <div className="absolute -top-20 -left-20 w-40 h-40 bg-white/5 rounded-full blur-3xl animate-pulse" />
       <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
@@ -595,9 +605,9 @@ const Dashboard = () => {
         </div>
       </div>
     </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 w-full px-2 sm:px-4 lg:px-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
       {/* Stats Row */}
-     <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
+     <div className="sm:col-span-1 lg:col-span-1 xl:col-span-1">
         {/* Unread Emails Widget */}
        <div className="widget-container group relative p-6 rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:border-white/40 hover:-translate-y-1 transform transition-all duration-300 overflow-hidden">
          {/* 3D Background Elements */}
@@ -621,7 +631,7 @@ const Dashboard = () => {
         </div>
 
 {/* Important Emails Widget */}
-<div className="md:col-span-1 lg:col-span-2 xl:col-span-3">
+<div className="sm:col-span-1 lg:col-span-2 xl:col-span-2">
   <div className="important-emails-widget widget-container group relative p-6 rounded-2xl border border-white/20 
                   bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md 
                   shadow-[0_8px_32px_rgba(0,0,0,0.3)] 
@@ -654,7 +664,7 @@ const Dashboard = () => {
                   <span className="text-sm font-medium text-white">{email.from || "Unknown Sender"}</span>
                   <span className="text-xs text-gray-400">{email.date || "Unknown Date"}</span>
                 </div>
-                <p className="text-white text-sm font-medium mb-2">{email.subject || "No Subject"}</p>
+                <p className="text-white text-sm font-medium mb-2 break-words">{email.subject || "No Subject"}</p>
                 {email.summary && <p className="text-gray-400 text-xs italic">{email.summary}</p>}
               </div>
             </div>
@@ -672,7 +682,7 @@ const Dashboard = () => {
 
 
 {/* Keyword Alerts Widget */}
-<div className="md:col-span-1 lg:col-span-1 xl:col-span-2">
+<div className="sm:col-span-1 lg:col-span-1 xl:col-span-1">
   <div className="keyword-alerts-widget widget-container group relative p-6 rounded-2xl border border-white/20 
 
             bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md 
@@ -748,7 +758,7 @@ const Dashboard = () => {
 
 
      {/* Daily Summary: full width */}
-     <div className="md:col-span-2 lg:col-span-3 xl:col-span-6">
+     <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4">
        <div className="widget-container group relative p-6 rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:border-white/40 hover:-translate-y-1 transform transition-all duration-300 overflow-hidden">
          {/* 3D Background Elements */}
           <div className="absolute -top-12 -left-12 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
@@ -761,14 +771,14 @@ const Dashboard = () => {
          <div className="relative">
             <div className="absolute inset-0 bg-blue-500/10 rounded-2xl blur-sm" />
            <div className="relative bg-black/30 rounded-2xl p-6 border border-white/10">
-             <p className="text-gray-300 text-lg leading-relaxed">{data.dailySummary}</p>
+             <p className="text-gray-300 text-lg leading-relaxed max-w-4xl">{data.dailySummary}</p>
              <div className="absolute bottom-0 left-0 w-full h-1 bg-blue-500 rounded-full opacity-60" />
            </div>
          </div>
        </div>
         </div>
 
-     <div className="md:col-span-2 lg:col-span-3 xl:col-span-6">
+     <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4">
        <div className="widget-container group relative p-6 rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:border-white/40 hover:-translate-y-1 transform transition-all duration-300 overflow-hidden">
          {/* 3D Background Elements */}
           <div className="absolute -top-10 -left-10 w-28 h-28 bg-white/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
@@ -794,7 +804,7 @@ const Dashboard = () => {
                       {email.date || "Unknown Date"}
                     </span>
                   </div>
-                     <p className="text-white text-sm font-medium">
+                     <p className="text-white text-sm font-medium break-words">
                     {email.subject || "No Subject"}
                   </p>
                    </div>
@@ -848,7 +858,7 @@ const Dashboard = () => {
             <p className="text-white/80 mb-6">
               Please complete the captcha to sync your emails.
             </p>
-            {captchaConfig.site_key && (
+            {captchaConfig.site_key ? (
               <div className="mb-6 flex justify-center">
                 <div
                   id="recaptcha-container"
@@ -858,22 +868,43 @@ const Dashboard = () => {
                   data-expired-callback="onCaptchaExpired"
                 ></div>
                 {!captchaRendered && (
-                  <button
-                    onClick={() => {
-                      if (typeof window.grecaptcha !== 'undefined') {
-                        window.grecaptcha.render('recaptcha-container', {
-                          'sitekey': captchaConfig.site_key,
-                          'callback': 'onCaptchaSuccess',
-                          'expired-callback': 'onCaptchaExpired'
-                        });
-                        setCaptchaRendered(true);
-                      }
-                    }}
-                    className="mt-2 px-3 py-1 rounded-lg font-bold border-2 border-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black shadow-lg tracking-wide bg-white text-black hover:bg-black hover:text-white hover:border-white active:scale-95 text-xs"
-                  >
-                    Load Captcha
-                  </button>
+                  <div className="flex flex-col items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (typeof window.grecaptcha !== 'undefined') {
+                          window.grecaptcha.render('recaptcha-container', {
+                            'sitekey': captchaConfig.site_key,
+                            'callback': 'onCaptchaSuccess',
+                            'expired-callback': 'onCaptchaExpired'
+                          });
+                          setCaptchaRendered(true);
+                        } else {
+                          console.log("reCAPTCHA not loaded, retrying...");
+                          setTimeout(() => {
+                            if (typeof window.grecaptcha !== 'undefined') {
+                              window.grecaptcha.render('recaptcha-container', {
+                                'sitekey': captchaConfig.site_key,
+                                'callback': 'onCaptchaSuccess',
+                                'expired-callback': 'onCaptchaExpired'
+                              });
+                              setCaptchaRendered(true);
+                            }
+                          }, 1000);
+                        }
+                      }}
+                      className="px-4 py-2 rounded-lg font-bold border-2 border-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black shadow-lg tracking-wide bg-white text-black hover:bg-black hover:text-white hover:border-white active:scale-95 text-sm"
+                    >
+                      Load Captcha
+                    </button>
+                    <p className="text-white/60 text-xs">If captcha doesn't load, click this button</p>
+                  </div>
                 )}
+              </div>
+            ) : (
+              <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+                <p className="text-yellow-200 text-sm">
+                  Captcha is not properly configured. Please contact support or try again later.
+                </p>
               </div>
             )}
             <div className="flex gap-3 justify-center">
@@ -902,6 +933,7 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };
