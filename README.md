@@ -1,4 +1,4 @@
-# MailPilot Setup Guide
+# MailPilot Setup & reCAPTCHA Guide
 
 ## Overview
 MailPilot is a Gmail companion app that fetches emails from Gmail API, stores them in Supabase, and displays them in a beautiful dashboard.
@@ -34,8 +34,17 @@ MailPilot is a Gmail companion app that fetches emails from Gmail API, stores th
 3. Create a new token (optional - for higher rate limits)
 4. The API works without a token but has lower rate limits
 
-### 4. Environment Variables
-Create a `.env` file in the `backend` directory:
+### 4. reCAPTCHA Setup
+
+#### Get reCAPTCHA Keys
+1. Go to [Google reCAPTCHA Admin Console](https://www.google.com/recaptcha/admin)
+2. Click "Create" to create a new site
+3. Choose "reCAPTCHA v2" and "I'm not a robot" checkbox
+4. Add your domain (e.g., `localhost` for development)
+5. Copy the **Site Key** and **Secret Key**
+
+#### Configure Environment Variables
+Add these to your `.env` file in the backend directory:
 ```env
 CLIENT_ID=your_google_client_id
 CLIENT_SECRET=your_google_client_secret
@@ -43,7 +52,37 @@ REDIRECT_URI=http://127.0.0.1:8000/oauth2callback
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_KEY=your_supabase_anon_key
 HUGGINGFACE_API_TOKEN=your_huggingface_token_optional
+# reCAPTCHA Configuration
+RECAPTCHA_SITE_KEY=your_site_key_here
+RECAPTCHA_SECRET_KEY=your_secret_key_here
 ```
+
+#### Features Implemented
+- **Backend Security**: Rate limiting, user rate limiting, captcha verification, improved token refresh
+- **Frontend**: Captcha modal, automatic captcha loading, better error handling, loading states
+
+#### How It Works
+1. First sync attempt: If captcha is enabled, user sees a modal with reCAPTCHA
+2. Captcha verification: User completes the challenge
+3. Backend validation: Server verifies the captcha response with Google
+4. Rate limiting: Prevents spam by limiting requests per IP and user
+5. Token refresh: Automatically refreshes expired OAuth tokens
+
+#### Development vs Production
+- **Development**: If `RECAPTCHA_SECRET_KEY` is not set, captcha verification is skipped
+- **Production**: Always set both `RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY`
+
+#### Testing
+1. Start the backend: `cd backend && python main.py`
+2. Start the frontend: `cd frontend && npm run dev`
+3. Login and try to sync emails
+4. You should see the captcha modal (if keys are configured)
+
+#### Troubleshooting
+- Captcha not showing: Check that `RECAPTCHA_SITE_KEY` is set correctly
+- Captcha verification failing: Verify `RECAPTCHA_SECRET_KEY` is correct
+- Rate limit errors: Wait for the rate limit window to reset
+- Token refresh errors: User may need to log in again if refresh token is invalid
 
 ### 5. Backend Setup
 ```bash
@@ -77,7 +116,6 @@ npm run dev
 5. Frontend can now access dashboard
 
 ## API Endpoints
-
 - `GET /login` - Get Google OAuth URL
 - `GET /oauth2callback` - OAuth callback handler
 - `GET /dashboard` - Get dashboard data from Supabase
@@ -86,7 +124,6 @@ npm run dev
 - `GET /logout` - Clear stored tokens
 
 ## Database Schema
-
 ### emails table
 - `id` - Primary key
 - `message_id` - Gmail message ID
@@ -99,13 +136,13 @@ npm run dev
 - `updated_at` - Record update time
 
 ## Features
-- ✅ Google OAuth authentication
-- ✅ Gmail API integration
-- ✅ Supabase database storage
-- ✅ Email synchronization
-- ✅ Beautiful dashboard UI
-- ✅ Real-time unread count
-- ✅ Responsive design
+- Google OAuth authentication
+- Gmail API integration
+- Supabase database storage
+- Email synchronization
+- Beautiful dashboard UI
+- Real-time unread count
+- Responsive design
 
 ## Future Enhancements
 - Multi-user support
