@@ -156,6 +156,15 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="MailPilot Backend")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# --- Health & Root endpoints ---
+@app.get("/")
+def root():
+    return {"ok": True, "service": "MailPilot"}
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
 
 # CORS
 origins = ["http://localhost:5173"]
