@@ -167,18 +167,20 @@ def healthz():
 
 
 # CORS
-origins = [
+origins = {
     "http://localhost:5173",
-    "https://mail-pilot-eight.vercel.app"   # 👈 add your actual Vercel link here
-]
+    "http://127.0.0.1:5173",
+    FRONTEND_URL,  # ← your Vercel domain via env
+}
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=list(origins),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
