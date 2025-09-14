@@ -1,0 +1,23 @@
+# --- Env files ---
+.env
+.env.* 
+*/.env
+*.env
+
+# --- Python ---
+__pycache__/
+*.pyc
+backend/venv/
+
+# --- Node ---
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+frontend/dev-dist/
+
+# --- Misc ---
+.vercel/
+.DS_Store
+# VS Code settings
+.vscode/
