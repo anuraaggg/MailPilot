@@ -1,3 +1,7 @@
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+print("FRONTEND_URL =", FRONTEND_URL)
+
+
 def get_inbox_unread_count(access_token: str) -> int:
     url = "https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX"
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -880,15 +884,7 @@ def oauth2callback(request: Request, code: str):
 
     # Redirect to frontend with success indicator
     # Try different possible frontend URLs
-    frontend_urls = [
-        "http://localhost:5173/dashboard?auth_success=true",
-        "http://127.0.0.1:5173/dashboard?auth_success=true",
-        "http://localhost:3000/dashboard?auth_success=true",
-        "http://127.0.0.1:3000/dashboard?auth_success=true"
-    ]
-    
-    # Use the first URL for now, but we can make this configurable
-    redirect_url = frontend_urls[0]
+    redirect_url = f"{FRONTEND_URL}/dashboard#auth_success=true"
     print(f"Redirecting to: {redirect_url}")
     return RedirectResponse(redirect_url)
 
