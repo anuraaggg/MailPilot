@@ -850,9 +850,23 @@ def oauth2callback(request: Request, code: str):
         return JSONResponse({"error": "Failed to exchange authorization code for tokens"}, status_code=400)
 
     credentials = flow.credentials
-    
-    # Store credentials for the user (in production, use proper user identification)
-    user_id = "demo_user"  # In production, get from session or JWT
+
+    # Extract user's email from ID token
+    user_id = None
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+        id_info = id_token.verify_oauth2_token(
+            credentials.id_token,
+            google_requests.Request(),
+            os.getenv("CLIENT_ID")
+        )
+        user_id = id_info.get("email")
+        print(f"Extracted user email from ID token: {user_id}")
+    except Exception as e:
+        print(f"Failed to extract user email from ID token: {e}")
+        user_id = "demo_user"
+
     user_tokens[user_id] = {
         "access_token": credentials.token,
         "refresh_token": credentials.refresh_token,

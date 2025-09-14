@@ -695,31 +695,31 @@ const Dashboard = () => {
       <div className="flex items-center gap-2">
         <button
           onClick={() => setShowKeywordInput(!showKeywordInput)}
-          className="px-3 py-1 rounded-lg border border-white/30 bg-white/10 text-white text-xs 
-                     hover:bg-white/20 hover:border-white/50 transition-all duration-200 z-10"
+          className="flex items-center justify-center px-3 h-9 min-w-[70px] rounded-lg border border-white/30 bg-white/10 text-white text-base font-medium hover:bg-white/20 hover:border-white/50 transition-all duration-200 z-10"
+          style={{ boxSizing: 'border-box' }}
         >
           {showKeywordInput ? "Cancel" : "Add"}
         </button>
-        <span className="text-2xl opacity-80 ml-1">🏷️</span>
+        <span className="text-2xl opacity-80 ml-1 flex items-center h-9">🏷️</span>
       </div>
     </div>
 
     {showKeywordInput && (
       <div className="mb-4 z-10 relative">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <input
             type="text"
             value={newKeyword}
             onChange={(e) => setNewKeyword(e.target.value)}
             placeholder="Enter keyword..."
             onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
-            className="flex-1 bg-black/50 border border-white/30 rounded-lg px-3 py-2 text-white text-sm 
-                       focus:outline-none focus:border-white/60 focus:bg-black/70 transition-all duration-200"
+            className="flex-1 bg-black/50 border border-white/30 rounded-lg px-3 h-9 text-white text-base focus:outline-none focus:border-white/60 focus:bg-black/70 transition-all duration-200"
+            style={{ boxSizing: 'border-box' }}
           />
           <button
             onClick={handleAddKeyword}
-             className="px-3 py-2 rounded-lg border border-blue-500/50 bg-blue-500/20 text-blue-200 text-sm 
-                        hover:bg-blue-500/30 hover:border-blue-500/70 transition-all duration-200"
+            className="flex items-center justify-center px-3 h-9 min-w-[56px] rounded-lg border border-blue-500/50 bg-blue-500/20 text-blue-200 text-base font-medium hover:bg-blue-500/30 hover:border-blue-500/70 transition-all duration-200"
+            style={{ boxSizing: 'border-box' }}
           >
             Add
           </button>
@@ -730,16 +730,15 @@ const Dashboard = () => {
     <div className="space-y-2 z-10 relative max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
       {data.keywords?.length > 0 ? (
         data.keywords.map((kw, i) => (
-          <div key={i} className="group/keyword flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10 
-                                 hover:bg-white/10 hover:border-white/20 transition-all duration-300">
-            <span className="text-white text-sm font-medium">{kw}</span>
-             <button
-               onClick={() => handleRemoveKeyword(kw)}
-                className="px-2 py-1 rounded-lg border border-white/30 bg-white/10 text-white text-xs 
-                           hover:bg-white/20 hover:border-white/50 transition-all duration-200 opacity-100"
-             >
-               Remove
-             </button>
+          <div key={i} className="group/keyword flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300">
+            <span className="text-white text-base font-medium">{kw}</span>
+            <button
+              onClick={() => handleRemoveKeyword(kw)}
+              className="flex items-center justify-center px-3 h-9 min-w-[70px] rounded-lg border border-red-500/50 bg-red-500/20 text-red-200 text-base font-medium hover:bg-red-500/30 hover:border-red-500/70 transition-all duration-200 opacity-100"
+              style={{ boxSizing: 'border-box' }}
+            >
+              Remove
+            </button>
           </div>
         ))
       ) : (
