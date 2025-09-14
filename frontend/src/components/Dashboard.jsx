@@ -455,29 +455,30 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {showKeywordInput && (
-        <div className="mb-4 z-10 relative">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newKeyword}
-              onChange={(e) => setNewKeyword(e.target.value)}
-              placeholder="Enter keyword..."
-              onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
-              className="flex-1 min-w-0 bg-black/50 border border-white/30 rounded-lg px-3 py-2 text-white text-sm
-                         focus:outline-none focus:border-white/60 focus:bg-black/70 transition-all duration-200"
-            />
-            <button
-              onClick={handleAddKeyword}
-              className="w-16 min-w-[60px] px-3 py-2 rounded-lg border border-blue-500/50 bg-blue-500/20 text-blue-200 text-sm
-                         hover:bg-blue-500/30 hover:border-blue-500/70 transition-all duration-200 flex-shrink-0"
-              style={{ minWidth: '60px' }}
-            >
-              Add
-            </button>
+        {showKeywordInput && (
+          <div className="mb-4 z-10 relative">
+            <div className="flex gap-2 w-full">
+              <input
+                type="text"
+                value={newKeyword}
+                onChange={(e) => setNewKeyword(e.target.value)}
+                placeholder="Enter keyword..."
+                onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
+                className="flex-grow bg-black/50 border border-white/30 rounded-lg px-3 py-2 text-white text-sm 
+                           focus:outline-none focus:border-white/60 focus:bg-black/70 transition-all duration-200 min-w-0"
+                style={{ width: 0 }}
+              />
+              <button
+                onClick={handleAddKeyword}
+                className="w-16 min-w-[60px] px-3 py-2 rounded-lg border border-blue-500/50 bg-blue-500/20 text-blue-200 text-sm 
+                           hover:bg-blue-500/30 hover:border-blue-500/70 transition-all duration-200 flex-shrink-0"
+                style={{ minWidth: '60px' }}
+              >
+                Add
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       <div className="space-y-2 z-10 relative max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {data.keywords?.length > 0 ? (
