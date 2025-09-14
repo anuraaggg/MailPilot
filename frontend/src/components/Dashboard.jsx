@@ -17,28 +17,25 @@ const Dashboard = () => {
 
   // Check authentication status and fetch data
   useEffect(() => {
+    // read query (?...) and hash (#...)
     const params = new URLSearchParams(window.location.search);
-    const authSuccess = params.get("auth_success");
-    
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const authSuccess = params.get("auth_success") || hashParams.get("auth_success");
+
     console.log("Current URL:", window.location.href);
-    console.log("URL params:", window.location.search);
     console.log("auth_success param:", authSuccess);
-    
+
     if (authSuccess === "true") {
-      console.log("Authentication successful, proceeding to dashboard");
-      // Clear URL parameters after successful auth
+      // strip both query and hash
       window.history.replaceState({}, document.title, window.location.pathname);
       setIsAuthenticated(true);
-      
-      // Add a small delay to ensure backend has processed the OAuth tokens
+
       setTimeout(() => {
         fetchDashboard();
         fetchCaptchaConfig();
       }, 1000);
     } else {
-      // Check if user is already authenticated (stored in session)
       const storedAuth = sessionStorage.getItem("mailpilot_authenticated");
-      console.log("Stored auth:", storedAuth);
       if (storedAuth === "true") {
         setIsAuthenticated(true);
         fetchDashboard();
@@ -50,6 +47,7 @@ const Dashboard = () => {
       }
     }
   }, []);
+
 
   const fetchDashboard = async () => {
     try {
