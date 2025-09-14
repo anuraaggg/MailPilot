@@ -941,10 +941,10 @@ def oauth2callback(request: Request, code: str):
 
 @app.get("/dashboard")
 def get_dashboard(request: Request):
-    # Use user_id from header, fallback to demo_user
-    user_id = request.headers.get("X-User-Id", "demo_user")
-    if user_id not in user_tokens:
+    # Get the authenticated user ID (should be the email from OAuth)
+    if not user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
+    user_id = list(user_tokens.keys())[0]  # Get the first authenticated user
     
     try:
         # Get emails from Supabase database
@@ -1063,9 +1063,9 @@ def get_dashboard(request: Request):
 @limiter.limit("10/minute")  # Rate limit: 10 requests per minute
 def sync_emails(request: Request, background_tasks: BackgroundTasks, captcha_data: dict = None):
     """Sync emails from Gmail API to Supabase database with captcha verification"""
-    user_id = request.headers.get("X-User-Id", "demo_user")
-    if user_id not in user_tokens:
+    if not user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
+    user_id = list(user_tokens.keys())[0]  # Get the first authenticated user
     
     # Check rate limit
     if not check_sync_rate_limit(user_id):
@@ -1114,9 +1114,9 @@ def sync_emails(request: Request, background_tasks: BackgroundTasks, captcha_dat
 @app.get("/debug/emails")
 def debug_emails():
     """Debug endpoint to check Gmail API response"""
-    user_id = "demo_user"
-    if user_id not in user_tokens:
+    if not user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
+    user_id = list(user_tokens.keys())[0]  # Get the first authenticated user
     
     token_data = user_tokens[user_id]
     credentials = Credentials(
@@ -1180,18 +1180,18 @@ def debug_emails():
 @app.get("/keywords")
 def get_keywords(request: Request):
     """Get user's keywords"""
-    user_id = request.headers.get("X-User-Id", "demo_user")
-    if user_id not in user_tokens:
+    if not user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
+    user_id = list(user_tokens.keys())[0]  # Get the first authenticated user
     keywords = get_user_keywords(user_id)
     return {"keywords": keywords}
 
 @app.post("/keywords")
 def add_keyword(request: Request, keyword_data: dict):
     """Add a keyword for the user"""
-    user_id = request.headers.get("X-User-Id", "demo_user")
-    if user_id not in user_tokens:
+    if not user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
+    user_id = list(user_tokens.keys())[0]  # Get the first authenticated user
     keyword = keyword_data.get("keyword", "").strip()
     if not keyword:
         raise HTTPException(status_code=400, detail="Keyword cannot be empty")
@@ -1203,9 +1203,9 @@ def add_keyword(request: Request, keyword_data: dict):
 @app.delete("/keywords/{keyword}")
 def remove_keyword(request: Request, keyword: str):
     """Remove a keyword for the user"""
-    user_id = request.headers.get("X-User-Id", "demo_user")
-    if user_id not in user_tokens:
+    if not user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
+    user_id = list(user_tokens.keys())[0]  # Get the first authenticated user
     result = remove_user_keyword(user_id, keyword)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -1214,8 +1214,9 @@ def remove_keyword(request: Request, keyword: str):
 @app.get("/auth/status")
 def auth_status():
     """Check authentication status"""
-    user_id = "demo_user"
-    if user_id in user_tokens:
+    # Get the first (and should be only) authenticated user
+    if user_tokens:
+        user_id = list(user_tokens.keys())[0]  # Get the first user
         return {
             "authenticated": True,
             "user_id": user_id,
@@ -1223,14 +1224,13 @@ def auth_status():
             "has_refresh_token": "refresh_token" in user_tokens[user_id]
         }
     else:
-        return {"authenticated": False, "user_id": user_id}
+        return {"authenticated": False, "user_id": None}
 
 @app.get("/logout")
 def logout():
     """Clear stored tokens"""
-    user_id = "demo_user"
-    if user_id in user_tokens:
-        del user_tokens[user_id]
+    # Clear all stored tokens (in case there are multiple users)
+    user_tokens.clear()
     return {"message": "Logged out successfully"}
 
 @app.get("/captcha/config")
@@ -1250,9 +1250,9 @@ def get_captcha_config():
     }
 @app.get("/debug/primary-sample")
 def debug_primary_sample():
-    user_id = "demo_user"
-    if user_id not in user_tokens:
+    if not user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
+    user_id = list(user_tokens.keys())[0]  # Get the first authenticated user
 
     token_data = user_tokens[user_id]
     creds = Credentials(
@@ -1293,9 +1293,9 @@ def debug_primary_sample():
 @app.get("/debug/search-secret-email")
 def debug_search_secret_email():
     """Debug endpoint to specifically search for the 'secret to adulthood' email"""
-    user_id = "demo_user"
-    if user_id not in user_tokens:
+    if not user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
+    user_id = list(user_tokens.keys())[0]  # Get the first authenticated user
 
     token_data = user_tokens[user_id]
     creds = Credentials(
@@ -1344,9 +1344,9 @@ def debug_search_secret_email():
 @app.post("/debug/force-sync")
 def debug_force_sync():
     """Debug endpoint to force a fresh sync without rate limiting"""
-    user_id = "demo_user"
-    if user_id not in user_tokens:
+    if not user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
+    user_id = list(user_tokens.keys())[0]  # Get the first authenticated user
     
     token_data = user_tokens[user_id]
     credentials = Credentials(
@@ -1417,3 +1417,23 @@ def debug_active_users():
         }
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/debug/current-user")
+def debug_current_user():
+    """Debug endpoint to show current authenticated user information"""
+    if not user_tokens:
+        return {"authenticated": False, "message": "No users authenticated"}
+    
+    user_id = list(user_tokens.keys())[0]
+    user_data = user_tokens[user_id]
+    
+    return {
+        "authenticated": True,
+        "user_id": user_id,
+        "user_email": user_id,  # Since user_id is the email
+        "has_access_token": "access_token" in user_data,
+        "has_refresh_token": "refresh_token" in user_data,
+        "token_expires_at": user_data.get("expires_at"),
+        "scopes": user_data.get("scopes", []),
+        "total_authenticated_users": len(user_tokens)
+    }

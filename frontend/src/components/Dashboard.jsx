@@ -14,6 +14,7 @@ const Dashboard = () => {
   const [captchaResponse, setCaptchaResponse] = useState(null);
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [captchaRendered, setCaptchaRendered] = useState(false);
+  const [captchaError, setCaptchaError] = useState(null);
 
   // Check authentication status and fetch data
   useEffect(() => {
@@ -115,34 +116,53 @@ const Dashboard = () => {
       // Set up global captcha callbacks
       if (config.enabled && config.site_key) {
         console.log("Setting up captcha callbacks with site key:", config.site_key);
+        
+        // Set up global callbacks
         window.onCaptchaSuccess = (token) => {
-          console.log("Captcha success, token:", token);
+          console.log("Captcha success callback triggered, token:", token);
           setCaptchaResponse(token);
         };
         
         window.onCaptchaExpired = () => {
-          console.log("Captcha expired");
+          console.log("Captcha expired callback triggered");
           setCaptchaResponse(null);
         };
         
-        // Check if reCAPTCHA is loaded
-        if (typeof window.grecaptcha !== 'undefined') {
-          console.log("reCAPTCHA is loaded");
+        // Also set up error callback
+        window.onCaptchaError = (error) => {
+          console.log("Captcha error callback triggered:", error);
+          setCaptchaResponse(null);
+          setCaptchaError(`Captcha error: ${error}`);
+        };
+        
+        // Check if reCAPTCHA script is loaded
+        const checkRecaptchaLoaded = () => {
+          if (typeof window.grecaptcha !== 'undefined') {
+            console.log("reCAPTCHA script is loaded and ready");
+            return true;
+          }
+          return false;
+        };
+        
+        if (checkRecaptchaLoaded()) {
+          console.log("reCAPTCHA already loaded");
         } else {
-          console.log("reCAPTCHA not loaded, waiting...");
-          // Wait for reCAPTCHA to load
-          const checkRecaptcha = setInterval(() => {
-            if (typeof window.grecaptcha !== 'undefined') {
+          console.log("reCAPTCHA not loaded, waiting for script...");
+          // Wait for reCAPTCHA to load with more frequent checks
+          const checkInterval = setInterval(() => {
+            if (checkRecaptchaLoaded()) {
               console.log("reCAPTCHA loaded after waiting");
-              clearInterval(checkRecaptcha);
+              clearInterval(checkInterval);
             }
-          }, 1000);
+          }, 500);
           
-          // Clear interval after 10 seconds
+          // Clear interval after 15 seconds
           setTimeout(() => {
-            clearInterval(checkRecaptcha);
-            console.log("reCAPTCHA failed to load after 10 seconds");
-          }, 10000);
+            clearInterval(checkInterval);
+            if (!checkRecaptchaLoaded()) {
+              console.error("reCAPTCHA failed to load after 15 seconds");
+            }
+          }, 15000);
         }
       } else {
         console.log("Captcha disabled or no site key - config:", config);
@@ -157,31 +177,69 @@ const Dashboard = () => {
   useEffect(() => {
     if (showCaptcha && captchaConfig?.enabled && captchaConfig?.site_key && !captchaRendered) {
       console.log("Modal opened, attempting to render captcha...");
+      console.log("Captcha config:", captchaConfig);
+      console.log("reCAPTCHA available:", typeof window.grecaptcha !== 'undefined');
       
-      const renderCaptcha = () => {
-        if (typeof window.grecaptcha !== 'undefined' && document.getElementById('recaptcha-container')) {
-          console.log("Rendering captcha automatically...");
-          try {
-            window.grecaptcha.render('recaptcha-container', {
-              'sitekey': captchaConfig.site_key,
-              'callback': 'onCaptchaSuccess',
-              'expired-callback': 'onCaptchaExpired'
-            });
-            setCaptchaRendered(true);
-            console.log("Captcha rendered successfully");
-          } catch (error) {
-            console.error("Error rendering captcha:", error);
-            // If rendering fails, try again after a delay
-            setTimeout(renderCaptcha, 1000);
+      const renderCaptcha = (attempt = 1) => {
+        console.log(`Captcha render attempt ${attempt}`);
+        
+        // Check if reCAPTCHA is loaded
+        if (typeof window.grecaptcha === 'undefined') {
+          console.log("reCAPTCHA not loaded, waiting...");
+          if (attempt < 30) { // Try for up to 15 seconds (30 * 500ms)
+            setTimeout(() => renderCaptcha(attempt + 1), 500);
+          } else {
+            console.error("reCAPTCHA failed to load after 15 seconds");
           }
-        } else {
-          console.log("reCAPTCHA not ready or container not found, retrying in 500ms...");
-          setTimeout(renderCaptcha, 500);
+          return;
+        }
+        
+        // Check if container exists
+        const container = document.getElementById('recaptcha-container');
+        if (!container) {
+          console.log("Captcha container not found, waiting...");
+          if (attempt < 30) {
+            setTimeout(() => renderCaptcha(attempt + 1), 500);
+          } else {
+            console.error("Captcha container not found after 15 seconds");
+          }
+          return;
+        }
+        
+        // Try to render captcha
+        try {
+          console.log("Attempting to render captcha with site key:", captchaConfig.site_key);
+          
+          // Clear any existing captcha
+          if (container.hasChildNodes()) {
+            container.innerHTML = '';
+          }
+          
+          const widgetId = window.grecaptcha.render(container, {
+            'sitekey': captchaConfig.site_key,
+            'callback': 'onCaptchaSuccess',
+            'expired-callback': 'onCaptchaExpired',
+            'error-callback': 'onCaptchaError',
+            'theme': 'dark',
+            'size': 'normal'
+          });
+          
+          setCaptchaRendered(true);
+          console.log("Captcha rendered successfully with widget ID:", widgetId);
+          
+        } catch (error) {
+          console.error("Error rendering captcha:", error);
+          if (attempt < 5) {
+            console.log(`Retrying captcha render in 1 second (attempt ${attempt + 1}/5)`);
+            setTimeout(() => renderCaptcha(attempt + 1), 1000);
+          } else {
+            console.error("Failed to render captcha after 5 attempts");
+          }
         }
       };
       
-      // Wait a bit for the DOM to update
-      setTimeout(renderCaptcha, 100);
+      // Wait a bit for the DOM to update, then start rendering
+      setTimeout(() => renderCaptcha(1), 200);
     }
   }, [showCaptcha, captchaConfig, captchaRendered]);
 
@@ -190,8 +248,43 @@ const Dashboard = () => {
     if (!showCaptcha) {
       setCaptchaRendered(false);
       setCaptchaResponse(null);
+      setCaptchaError(null);
     }
   }, [showCaptcha]);
+
+  // Function to reload reCAPTCHA script
+  const reloadRecaptchaScript = () => {
+    console.log("Attempting to reload reCAPTCHA script...");
+    
+    // Remove existing script if it exists
+    const existingScript = document.querySelector('script[src*="recaptcha"]');
+    if (existingScript) {
+      existingScript.remove();
+      console.log("Removed existing reCAPTCHA script");
+    }
+    
+    // Create new script element
+    const script = document.createElement('script');
+    script.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit';
+    script.async = true;
+    script.defer = true;
+    
+    // Set up global onload callback
+    window.onRecaptchaLoad = () => {
+      console.log("reCAPTCHA script reloaded successfully");
+      setCaptchaError(null);
+    };
+    
+    // Add error handling
+    script.onerror = () => {
+      console.error("Failed to load reCAPTCHA script");
+      setCaptchaError("Failed to load reCAPTCHA script. Please check your internet connection.");
+    };
+    
+    // Add script to document
+    document.head.appendChild(script);
+    console.log("Added new reCAPTCHA script to document");
+  };
 
   const handleLogout = async () => {
     try {
@@ -858,6 +951,20 @@ const Dashboard = () => {
             <p className="text-white/80 mb-6">
               Please complete the captcha to sync your emails.
             </p>
+            
+            {/* Debug Information */}
+            <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-left">
+              <p className="text-blue-200 text-xs font-semibold mb-2">Debug Information:</p>
+              <div className="text-blue-200/80 text-xs space-y-1">
+                <p>• Captcha Enabled: {captchaConfig?.enabled ? 'Yes' : 'No'}</p>
+                <p>• Site Key: {captchaConfig?.site_key ? 'Present' : 'Missing'}</p>
+                <p>• reCAPTCHA Script: {typeof window.grecaptcha !== 'undefined' ? 'Loaded' : 'Not Loaded'}</p>
+                <p>• Container: {document.getElementById('recaptcha-container') ? 'Found' : 'Not Found'}</p>
+                <p>• Rendered: {captchaRendered ? 'Yes' : 'No'}</p>
+                <p>• Response: {captchaResponse ? 'Received' : 'None'}</p>
+                {captchaError && <p>• Error: {captchaError}</p>}
+              </div>
+            </div>
             {captchaConfig.site_key ? (
               <div className="mb-6 flex justify-center">
                 <div
@@ -871,32 +978,62 @@ const Dashboard = () => {
                   <div className="flex flex-col items-center gap-2">
                     <button
                       onClick={() => {
-                        if (typeof window.grecaptcha !== 'undefined') {
-                          window.grecaptcha.render('recaptcha-container', {
+                        console.log("Manual captcha load button clicked");
+                        const container = document.getElementById('recaptcha-container');
+                        
+                        if (typeof window.grecaptcha === 'undefined') {
+                          console.log("reCAPTCHA not loaded, please wait for script to load");
+                          alert("reCAPTCHA script is still loading. Please wait a moment and try again.");
+                          return;
+                        }
+                        
+                        if (!container) {
+                          console.log("Captcha container not found");
+                          alert("Captcha container not found. Please refresh the page.");
+                          return;
+                        }
+                        
+                        try {
+                          console.log("Manually rendering captcha...");
+                          
+                          // Clear any existing captcha
+                          if (container.hasChildNodes()) {
+                            container.innerHTML = '';
+                          }
+                          
+                          const widgetId = window.grecaptcha.render(container, {
                             'sitekey': captchaConfig.site_key,
                             'callback': 'onCaptchaSuccess',
-                            'expired-callback': 'onCaptchaExpired'
+                            'expired-callback': 'onCaptchaExpired',
+                            'error-callback': 'onCaptchaError',
+                            'theme': 'dark',
+                            'size': 'normal'
                           });
+                          
                           setCaptchaRendered(true);
-                        } else {
-                          console.log("reCAPTCHA not loaded, retrying...");
-                          setTimeout(() => {
-                            if (typeof window.grecaptcha !== 'undefined') {
-                              window.grecaptcha.render('recaptcha-container', {
-                                'sitekey': captchaConfig.site_key,
-                                'callback': 'onCaptchaSuccess',
-                                'expired-callback': 'onCaptchaExpired'
-                              });
-                              setCaptchaRendered(true);
-                            }
-                          }, 1000);
+                          console.log("Manual captcha render successful, widget ID:", widgetId);
+                          
+                        } catch (error) {
+                          console.error("Manual captcha render failed:", error);
+                          alert("Failed to load captcha. Please check the console for details.");
                         }
                       }}
                       className="px-4 py-2 rounded-lg font-bold border-2 border-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black shadow-lg tracking-wide bg-white text-black hover:bg-black hover:text-white hover:border-white active:scale-95 text-sm"
                     >
                       Load Captcha
                     </button>
-                    <p className="text-white/60 text-xs">If captcha doesn't load, click this button</p>
+                    <p className="text-white/60 text-xs">If captcha doesn't load automatically, click this button</p>
+                    <div className="text-white/40 text-xs">
+                      <p>Debug info:</p>
+                      <p>reCAPTCHA loaded: {typeof window.grecaptcha !== 'undefined' ? 'Yes' : 'No'}</p>
+                      <p>Container exists: {document.getElementById('recaptcha-container') ? 'Yes' : 'No'}</p>
+                    </div>
+                    <button
+                      onClick={reloadRecaptchaScript}
+                      className="px-3 py-1 rounded text-xs border border-yellow-500/50 bg-yellow-500/20 text-yellow-200 hover:bg-yellow-500/30 transition-all duration-200"
+                    >
+                      Reload reCAPTCHA Script
+                    </button>
                   </div>
                 )}
               </div>
