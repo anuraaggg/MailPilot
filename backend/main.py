@@ -891,8 +891,8 @@ def oauth2callback(request: Request, code: str):
 
 @app.get("/dashboard")
 def get_dashboard(request: Request):
-    # For demo purposes, get the stored token
-    user_id = "demo_user"
+    # Use user_id from header, fallback to demo_user
+    user_id = request.headers.get("X-User-Id", "demo_user")
     if user_id not in user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
     
@@ -998,8 +998,8 @@ def get_dashboard(request: Request):
             "importantEmails": formatted_important_emails,
             "keywords": user_keywords,
             "dailySummary": daily_summary,
-            "activeUsers": 1,
-            "activeAccounts": 1,
+            "activeUsers": len(user_tokens),
+            "activeAccounts": len(user_tokens),
             "recentEmails": formatted_emails
         }
         
@@ -1010,7 +1010,7 @@ def get_dashboard(request: Request):
 @limiter.limit("10/minute")  # Rate limit: 10 requests per minute
 def sync_emails(request: Request, background_tasks: BackgroundTasks, captcha_data: dict = None):
     """Sync emails from Gmail API to Supabase database with captcha verification"""
-    user_id = "demo_user"
+    user_id = request.headers.get("X-User-Id", "demo_user")
     if user_id not in user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
     
@@ -1125,43 +1125,37 @@ def debug_emails():
         return {"error": str(e), "traceback": str(e.__traceback__)}
 
 @app.get("/keywords")
-def get_keywords():
+def get_keywords(request: Request):
     """Get user's keywords"""
-    user_id = "demo_user"
+    user_id = request.headers.get("X-User-Id", "demo_user")
     if user_id not in user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
-    
     keywords = get_user_keywords(user_id)
     return {"keywords": keywords}
 
 @app.post("/keywords")
-def add_keyword(keyword_data: dict):
+def add_keyword(request: Request, keyword_data: dict):
     """Add a keyword for the user"""
-    user_id = "demo_user"
+    user_id = request.headers.get("X-User-Id", "demo_user")
     if user_id not in user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
-    
     keyword = keyword_data.get("keyword", "").strip()
     if not keyword:
         raise HTTPException(status_code=400, detail="Keyword cannot be empty")
-    
     result = add_user_keyword(user_id, keyword)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
-    
     return result
 
 @app.delete("/keywords/{keyword}")
-def remove_keyword(keyword: str):
+def remove_keyword(request: Request, keyword: str):
     """Remove a keyword for the user"""
-    user_id = "demo_user"
+    user_id = request.headers.get("X-User-Id", "demo_user")
     if user_id not in user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
-    
     result = remove_user_keyword(user_id, keyword)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
-    
     return result
 
 @app.get("/auth/status")

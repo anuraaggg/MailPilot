@@ -422,6 +422,89 @@ const Dashboard = () => {
     'font-medium', 'tracking-wide', 'select-none', 'active:scale-100', 'disabled:opacity-60', 'disabled:cursor-not-allowed'
   ].join(' ');
 
+  // ...existing code...
+
+  // --- Keyword Alerts Widget (fixed scale) ---
+  // Place this inside your return JSX where the widget is rendered
+  // ...existing code...
+  {/* Keyword Alerts Widget */}
+  <div className="lg:col-span-1">
+    <div className="keyword-alerts-widget widget-container group relative p-6 rounded-2xl border border-white/20
+          bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md
+          shadow-[0_8px_32px_rgba(0,0,0,0.3)]
+          hover:shadow-[0_20px_40px_rgba(255,255,255,0.1)]
+          hover:border-white/40 hover:-translate-y-1
+          transform transition-all duration-300 overflow-hidden will-change-transform">
+
+      {/* 3D Background Elements */}
+      <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700" />
+      <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-white/5 rounded-full blur-lg group-hover:scale-125 transition-transform duration-700" />
+
+      <div className="flex justify-between items-center mb-4 z-10 relative">
+        <h2 className="text-lg font-semibold text-white z-10">Keyword Alerts</h2>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowKeywordInput(!showKeywordInput)}
+            className="w-20 min-w-[70px] px-3 py-1 rounded-lg border border-white/30 bg-white/10 text-white text-xs
+                       hover:bg-white/20 hover:border-white/50 transition-all duration-200 z-10"
+            style={{ minWidth: '70px' }}
+          >
+            {showKeywordInput ? "Cancel" : "Add"}
+          </button>
+          <span className="text-2xl opacity-80 ml-1">🏷️</span>
+        </div>
+      </div>
+
+      {showKeywordInput && (
+        <div className="mb-4 z-10 relative">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newKeyword}
+              onChange={(e) => setNewKeyword(e.target.value)}
+              placeholder="Enter keyword..."
+              onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
+              className="flex-1 min-w-0 bg-black/50 border border-white/30 rounded-lg px-3 py-2 text-white text-sm
+                         focus:outline-none focus:border-white/60 focus:bg-black/70 transition-all duration-200"
+            />
+            <button
+              onClick={handleAddKeyword}
+              className="w-16 min-w-[60px] px-3 py-2 rounded-lg border border-blue-500/50 bg-blue-500/20 text-blue-200 text-sm
+                         hover:bg-blue-500/30 hover:border-blue-500/70 transition-all duration-200 flex-shrink-0"
+              style={{ minWidth: '60px' }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2 z-10 relative max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        {data.keywords?.length > 0 ? (
+          data.keywords.map((kw, i) => (
+            <div key={i} className="group/keyword flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10
+                                   hover:bg-white/10 hover:border-white/20 transition-all duration-300">
+              <span className="text-white text-sm font-medium">{kw}</span>
+               <button
+                 onClick={() => handleRemoveKeyword(kw)}
+                  className="px-2 py-1 rounded-lg border border-white/30 bg-white/10 text-white text-xs
+                             hover:bg-white/20 hover:border-white/50 transition-all duration-200 opacity-100"
+               >
+                 Remove
+               </button>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-6">
+            <div className="text-3xl mb-2 opacity-30">🔍</div>
+            <p className="text-gray-400 text-sm">No keywords set. Add keywords to filter important emails.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+  // ...existing code...
+
   return (
   <div className="min-h-screen p-8 text-white bg-black" style={{ fontFamily }}>
      <style>{`
