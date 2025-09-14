@@ -1,5 +1,7 @@
 // src/components/Dashboard.jsx
 import React, { useState, useEffect } from "react";
+const API_URL = (import.meta.env.VITE_API_URL || '').trim();
+
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
@@ -55,7 +57,7 @@ const Dashboard = () => {
       setError(null);
       
       // First check if backend has our auth tokens
-      const authStatusRes = await fetch("http://127.0.0.1:8000/auth/status");
+  const authStatusRes = await fetch(`${API_URL}/auth/status`);
       const authStatus = await authStatusRes.json();
       
       console.log("Auth status:", authStatus);
@@ -67,7 +69,7 @@ const Dashboard = () => {
         return;
       }
       
-      const res = await fetch("http://127.0.0.1:8000/dashboard");
+  const res = await fetch(`${API_URL}/dashboard`);
       
       if (res.status === 401) {
         // Token expired or invalid, redirect to login
@@ -101,7 +103,7 @@ const Dashboard = () => {
 
   const fetchCaptchaConfig = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/captcha/config");
+  const res = await fetch(`${API_URL}/captcha/config`);
       const config = await res.json();
       console.log("Captcha config received:", config);
       setCaptchaConfig(config);
@@ -186,7 +188,7 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await fetch("http://127.0.0.1:8000/logout");
+  await fetch(`${API_URL}/logout`);
     } catch (err) {
       console.error("Logout error:", err);
     } finally {
@@ -199,7 +201,7 @@ const Dashboard = () => {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/login");
+  const response = await fetch(`${API_URL}/login`);
       if (!response.ok) {
         throw new Error("Failed to get login URL");
       }
@@ -231,7 +233,7 @@ const Dashboard = () => {
       console.log("Proceeding with sync, requestBody:", captchaResponse ? { captcha_response: captchaResponse } : {});
       const requestBody = captchaResponse ? { captcha_response: captchaResponse } : {};
       
-      const response = await fetch("http://127.0.0.1:8000/sync-emails", {
+  const response = await fetch(`${API_URL}/sync-emails`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -277,7 +279,7 @@ const Dashboard = () => {
     if (!newKeyword.trim()) return;
     
     try {
-      const response = await fetch("http://127.0.0.1:8000/keywords", {
+  const response = await fetch(`${API_URL}/keywords`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -302,7 +304,7 @@ const Dashboard = () => {
 
   const handleRemoveKeyword = async (keyword) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/keywords/${encodeURIComponent(keyword)}`, {
+  const response = await fetch(`${API_URL}/keywords/${encodeURIComponent(keyword)}`, {
         method: "DELETE"
       });
       
