@@ -822,7 +822,13 @@ def generate_daily_summary(todays_emails: List[Dict], weekly_count: int, keyword
 def login():
     flow = create_flow()
     auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
+
+    # 🔍 Debug prints
+    print(f"DEBUG Redirect URI in use: {os.getenv('REDIRECT_URI')!r}")
+    print(f"DEBUG Generated auth_url: {auth_url}")
+
     return {"auth_url": auth_url}
+
 
 
 @app.get("/oauth2callback")
