@@ -919,30 +919,6 @@ const Dashboard = () => {
 
       </div>
 
-     {/* Active Users - moved to end of page */}
-     <div className="mt-6">
-       <div className="widget-container group relative p-6 rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:border-white/40 hover:-translate-y-1 transform transition-all duration-300 overflow-hidden">
-         {/* 3D Background Elements */}
-          <div className="absolute -top-8 -right-8 w-20 h-20 bg-white/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700" />
-          <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-white/5 rounded-full blur-lg group-hover:scale-125 transition-transform duration-700" />
-         
-         {/* Floating Icons */}
-         <div className="absolute top-4 right-4 text-2xl opacity-20 group-hover:opacity-40 transition-all duration-500">👥</div>
-         
-         <h2 className="text-lg font-semibold text-white mb-3 z-10 relative">Active Users</h2>
-         <div className="relative">
-            <div className="absolute inset-0 bg-blue-500/10 rounded-2xl blur-sm" />
-           <div className="relative bg-black/30 rounded-2xl p-4 border border-white/10">
-             <p className="text-2xl font-bold text-white drop-shadow-2xl">
-               {data.activeUsers}
-             </p>
-             <p className="text-white/80 text-sm mt-1">users | {data.activeAccounts} Gmail accounts</p>
-             <div className="absolute bottom-0 left-0 w-full h-1 bg-blue-500 rounded-full opacity-60" />
-           </div>
-         </div>
-       </div>
-     </div>
-
       {/* Captcha Modal */}
       {showCaptcha && captchaConfig?.enabled && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
