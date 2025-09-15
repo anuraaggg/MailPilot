@@ -681,14 +681,6 @@ const Dashboard = () => {
         </div>
         <div className="flex gap-4">
           <button
-            onClick={handleSyncEmails}
-            className="group relative px-6 py-3 rounded-xl border border-white/30 bg-white/10 text-white backdrop-blur-sm shadow-lg transition-all duration-300 hover:border-white/50 hover:bg-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black font-medium tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={loading}
-          >
-            <span className="relative z-10">{loading ? "Syncing..." : "Sync Emails"}</span>
-            <div className="absolute inset-0 bg-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          </button>
-          <button
             onClick={handleLogout}
             className="group relative px-6 py-3 rounded-xl border border-white/30 bg-white/10 text-white backdrop-blur-sm shadow-lg transition-all duration-300 hover:border-white/50 hover:bg-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black font-medium tracking-wide"
           >
