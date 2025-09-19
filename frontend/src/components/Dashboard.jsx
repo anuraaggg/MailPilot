@@ -14,7 +14,14 @@ const Dashboard = () => {
   const [captchaResponse, setCaptchaResponse] = useState(null);
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [captchaRendered, setCaptchaRendered] = useState(false);
-  const [captchaError, setCaptchaError] = useState(null);
+
+  const getHeaders = () => {
+    const userEmail = sessionStorage.getItem("mailpilot_user_email") || "";
+    return {
+      "X-User-Email": userEmail,
+      "Content-Type": "application/json",
+    };
+  };
 
   // Check authentication status and fetch data
   useEffect(() => {
@@ -22,9 +29,14 @@ const Dashboard = () => {
     const params = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
     const authSuccess = params.get("auth_success") || hashParams.get("auth_success");
+    const userEmailFromHash = hashParams.get("user_email");
 
     console.log("Current URL:", window.location.href);
     console.log("auth_success param:", authSuccess);
+
+    if (userEmailFromHash) {
+      sessionStorage.setItem("mailpilot_user_email", userEmailFromHash);
+    }
 
     if (authSuccess === "true") {
       // strip both query and hash
@@ -132,7 +144,6 @@ const Dashboard = () => {
         window.onCaptchaError = (error) => {
           console.log("Captcha error callback triggered:", error);
           setCaptchaResponse(null);
-          setCaptchaError(`Captcha error: ${error}`);
         };
         
         // Check if reCAPTCHA script is loaded
@@ -248,43 +259,8 @@ const Dashboard = () => {
     if (!showCaptcha) {
       setCaptchaRendered(false);
       setCaptchaResponse(null);
-      setCaptchaError(null);
     }
   }, [showCaptcha]);
-
-  // Function to reload reCAPTCHA script
-  const reloadRecaptchaScript = () => {
-    console.log("Attempting to reload reCAPTCHA script...");
-    
-    // Remove existing script if it exists
-    const existingScript = document.querySelector('script[src*="recaptcha"]');
-    if (existingScript) {
-      existingScript.remove();
-      console.log("Removed existing reCAPTCHA script");
-    }
-    
-    // Create new script element
-    const script = document.createElement('script');
-    script.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit';
-    script.async = true;
-    script.defer = true;
-    
-    // Set up global onload callback
-    window.onRecaptchaLoad = () => {
-      console.log("reCAPTCHA script reloaded successfully");
-      setCaptchaError(null);
-    };
-    
-    // Add error handling
-    script.onerror = () => {
-      console.error("Failed to load reCAPTCHA script");
-      setCaptchaError("Failed to load reCAPTCHA script. Please check your internet connection.");
-    };
-    
-    // Add script to document
-    document.head.appendChild(script);
-    console.log("Added new reCAPTCHA script to document");
-  };
 
   const handleLogout = async () => {
     try {
@@ -318,26 +294,22 @@ const Dashboard = () => {
   };
 
   const handleSyncEmails = async () => {
+    // Always show captcha modal first
+    console.log("Sync button clicked, showing captcha modal");
+    setShowCaptcha(true);
+  };
+
+  const performSync = async () => {
     try {
-      console.log("Sync button clicked, captchaConfig:", captchaConfig, "captchaResponse:", captchaResponse);
       setLoading(true);
+      console.log("Performing sync with captcha response:", captchaResponse);
       
-      // If captcha is enabled and configured, show captcha first
-      if (captchaConfig?.enabled && captchaConfig?.site_key && !captchaResponse) {
-        console.log("Showing captcha modal");
-        setShowCaptcha(true);
-        setLoading(false);
-        return;
-      }
-      
-      console.log("Proceeding with sync, requestBody:", captchaResponse ? { captcha_response: captchaResponse } : {});
+      // Prepare request body
       const requestBody = captchaResponse ? { captcha_response: captchaResponse } : {};
       
-  const response = await fetch(`${API_URL}/sync-emails`, {
+      const response = await fetch(`${API_URL}/sync-emails`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: getHeaders(),
         body: JSON.stringify(requestBody)
       });
       
@@ -346,13 +318,11 @@ const Dashboard = () => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.log("Sync error response:", errorData);
+        
         if (response.status === 429) {
           throw new Error("Too many sync attempts. Please wait before trying again.");
         } else if (response.status === 400 && errorData.detail?.includes("captcha")) {
-          setShowCaptcha(true);
-          setCaptchaResponse(null);
-          setLoading(false);
-          return;
+          throw new Error("Invalid captcha. Please try again.");
         }
         throw new Error(errorData.detail || "Failed to sync emails");
       }
@@ -363,13 +333,19 @@ const Dashboard = () => {
       // Reset captcha after successful sync
       setCaptchaResponse(null);
       setShowCaptcha(false);
+      setCaptchaRendered(false);
       
       // Refresh dashboard data after sync
       await fetchDashboard();
       
+      // Show success message
+      setError(`Successfully synced ${result.emails_synced || 0} emails!`);
+      setTimeout(() => setError(null), 3000);
+      
     } catch (error) {
       console.error("Sync error:", error);
       setError(`Failed to sync emails: ${error.message}`);
+      // Keep modal open on error so user can retry
     } finally {
       setLoading(false);
     }
@@ -515,94 +491,7 @@ const Dashboard = () => {
 
   // Font and button style helpers
   const fontFamily = 'Poppins, sans-serif';
-  // Button style: visible on black, glassy, white border, white text, 3D, glow on hover
-  const buttonBase = [
-    'px-4', 'py-2', 'rounded-lg', 'border', 'border-white/30', 'bg-black/40', 'text-white',
-    'backdrop-blur-sm', 'shadow', 'transition-all', 'duration-200', 'hover:border-white',
-    'hover:shadow-[0_0_10px_rgba(255,255,255,0.6)]', 'hover:scale-105', 'focus:outline-none',
-    'focus:ring-2', 'focus:ring-white', 'focus:ring-offset-2', 'focus:ring-offset-black',
-    'font-medium', 'tracking-wide', 'select-none', 'active:scale-100', 'disabled:opacity-60', 'disabled:cursor-not-allowed'
-  ].join(' ');
 
-  // --- Keyword Alerts Widget (fixed scale) ---
-  // Place this inside your return JSX where the widget is rendered
-  {/* Keyword Alerts Widget */}
-  <div className="lg:col-span-1">
-    <div className="keyword-alerts-widget widget-container group relative p-6 rounded-2xl border border-white/20
-          bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md
-          shadow-[0_8px_32px_rgba(0,0,0,0.3)]
-          hover:shadow-[0_20px_40px_rgba(255,255,255,0.1)]
-          hover:border-white/40 hover:-translate-y-1
-          transform transition-all duration-300 overflow-hidden will-change-transform">
-
-      {/* 3D Background Elements */}
-      <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/5 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700" />
-      <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-white/5 rounded-full blur-lg group-hover:scale-125 transition-transform duration-700" />
-
-      <div className="flex justify-between items-center mb-4 z-10 relative">
-        <h2 className="text-lg font-semibold text-white z-10">Keyword Alerts</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowKeywordInput(!showKeywordInput)}
-            className="w-20 min-w-[70px] px-3 py-1 rounded-lg border border-white/30 bg-white/10 text-white text-xs
-                       hover:bg-white/20 hover:border-white/50 transition-all duration-200 z-10"
-            style={{ minWidth: '70px' }}
-          >
-            {showKeywordInput ? "Cancel" : "Add"}
-          </button>
-          <span className="text-2xl opacity-80 ml-1">🏷️</span>
-        </div>
-      </div>
-
-        {showKeywordInput && (
-          <div className="mb-4 z-10 relative">
-            <div className="flex gap-2 w-full">
-              <input
-                type="text"
-                value={newKeyword}
-                onChange={(e) => setNewKeyword(e.target.value)}
-                placeholder="Enter keyword..."
-                onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
-                className="flex-grow bg-black/50 border border-white/30 rounded-lg px-3 py-2 text-white text-sm 
-                           focus:outline-none focus:border-white/60 focus:bg-black/70 transition-all duration-200 min-w-0"
-                style={{ width: 0 }}
-              />
-              <button
-                onClick={handleAddKeyword}
-                className="w-16 min-w-[60px] px-3 py-2 rounded-lg border border-blue-500/50 bg-blue-500/20 text-blue-200 text-sm 
-                           hover:bg-blue-500/30 hover:border-blue-500/70 transition-all duration-200 flex-shrink-0"
-                style={{ minWidth: '60px' }}
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        )}
-
-      <div className="space-y-2 z-10 relative max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-        {data.keywords?.length > 0 ? (
-          data.keywords.map((kw, i) => (
-            <div key={i} className="group/keyword flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10
-                                   hover:bg-white/10 hover:border-white/20 transition-all duration-300">
-              <span className="text-white text-sm font-medium">{kw}</span>
-               <button
-                 onClick={() => handleRemoveKeyword(kw)}
-                  className="px-2 py-1 rounded-lg border border-white/30 bg-white/10 text-white text-xs
-                             hover:bg-white/20 hover:border-white/50 transition-all duration-200 opacity-100"
-               >
-                 Remove
-               </button>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-6">
-            <div className="text-3xl mb-2 opacity-30">🔍</div>
-            <p className="text-gray-400 text-sm">No keywords set. Add keywords to filter important emails.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
   return (
   <div className="min-h-screen w-full text-white bg-black" style={{ fontFamily }}>
     <div className="w-full max-w-7xl mx-auto">
@@ -681,6 +570,14 @@ const Dashboard = () => {
         </div>
         <div className="flex gap-4">
           <button
+            onClick={handleSyncEmails}
+            className="group relative px-6 py-3 rounded-xl border border-white/30 bg-white/10 text-white backdrop-blur-sm shadow-lg transition-all duration-300 hover:border-white/50 hover:bg-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black font-medium tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading}
+          >
+            <span className="relative z-10">{loading ? "Syncing..." : "Sync Emails"}</span>
+            <div className="absolute inset-0 bg-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          </button>
+          <button
             onClick={handleLogout}
             className="group relative px-6 py-3 rounded-xl border border-white/30 bg-white/10 text-white backdrop-blur-sm shadow-lg transition-all duration-300 hover:border-white/50 hover:bg-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black font-medium tracking-wide"
           >
@@ -707,7 +604,7 @@ const Dashboard = () => {
             <div className="absolute inset-0 bg-blue-500/10 rounded-2xl blur-sm" />
            <div className="relative bg-black/30 rounded-2xl p-4 border border-white/10">
              <p className="text-4xl font-black text-white drop-shadow-2xl">
-               {data.unreadEmails}
+               {data.weeklyEmails}
              </p>
              <div className="absolute bottom-0 left-0 w-full h-1 bg-blue-500 rounded-full opacity-60" />
            </div>
@@ -912,7 +809,7 @@ const Dashboard = () => {
       </div>
 
       {/* Captcha Modal */}
-      {showCaptcha && captchaConfig?.enabled && (
+      {showCaptcha && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
           <div className="bg-white/10 p-8 rounded-lg max-w-md w-full mx-4 border border-white/20 text-center">
             <h3 className="text-xl font-semibold text-white mb-4">Verify You're Human</h3>
@@ -920,119 +817,49 @@ const Dashboard = () => {
               Please complete the captcha to sync your emails.
             </p>
             
-            {/* Debug Information */}
-            <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-left">
-              <p className="text-blue-200 text-xs font-semibold mb-2">Debug Information:</p>
-              <div className="text-blue-200/80 text-xs space-y-1">
-                <p>• Captcha Enabled: {captchaConfig?.enabled ? 'Yes' : 'No'}</p>
-                <p>• Site Key: {captchaConfig?.site_key ? 'Present' : 'Missing'}</p>
-                <p>• reCAPTCHA Script: {typeof window.grecaptcha !== 'undefined' ? 'Loaded' : 'Not Loaded'}</p>
-                <p>• Container: {document.getElementById('recaptcha-container') ? 'Found' : 'Not Found'}</p>
-                <p>• Rendered: {captchaRendered ? 'Yes' : 'No'}</p>
-                <p>• Response: {captchaResponse ? 'Received' : 'None'}</p>
-                {captchaError && <p>• Error: {captchaError}</p>}
-              </div>
+            {/* Simple Manual Captcha */}
+            <div className="mb-6 p-4 bg-white/10 border border-white/20 rounded-lg">
+              <p className="text-white mb-4">What is 2 + 3?</p>
+              <input
+                type="number"
+                value={captchaResponse || ""}
+                onChange={(e) => setCaptchaResponse(e.target.value)}
+                placeholder="Enter answer"
+                className="w-full bg-black/50 border border-white/30 rounded-lg px-3 py-2 text-white text-center focus:outline-none focus:border-white/60 focus:bg-black/70 transition-all duration-200"
+              />
             </div>
-            {captchaConfig.site_key ? (
-              <div className="mb-6 flex justify-center">
-                <div
-                  id="recaptcha-container"
-                  className="g-recaptcha"
-                  data-sitekey={captchaConfig.site_key}
-                  data-callback="onCaptchaSuccess"
-                  data-expired-callback="onCaptchaExpired"
-                ></div>
-                {!captchaRendered && (
-                  <div className="flex flex-col items-center gap-2">
-                    <button
-                      onClick={() => {
-                        console.log("Manual captcha load button clicked");
-                        const container = document.getElementById('recaptcha-container');
-                        
-                        if (typeof window.grecaptcha === 'undefined') {
-                          console.log("reCAPTCHA not loaded, please wait for script to load");
-                          alert("reCAPTCHA script is still loading. Please wait a moment and try again.");
-                          return;
-                        }
-                        
-                        if (!container) {
-                          console.log("Captcha container not found");
-                          alert("Captcha container not found. Please refresh the page.");
-                          return;
-                        }
-                        
-                        try {
-                          console.log("Manually rendering captcha...");
-                          
-                          // Clear any existing captcha
-                          if (container.hasChildNodes()) {
-                            container.innerHTML = '';
-                          }
-                          
-                          const widgetId = window.grecaptcha.render(container, {
-                            'sitekey': captchaConfig.site_key,
-                            'callback': 'onCaptchaSuccess',
-                            'expired-callback': 'onCaptchaExpired',
-                            'error-callback': 'onCaptchaError',
-                            'theme': 'dark',
-                            'size': 'normal'
-                          });
-                          
-                          setCaptchaRendered(true);
-                          console.log("Manual captcha render successful, widget ID:", widgetId);
-                          
-                        } catch (error) {
-                          console.error("Manual captcha render failed:", error);
-                          alert("Failed to load captcha. Please check the console for details.");
-                        }
-                      }}
-                      className="px-4 py-2 rounded-lg font-bold border-2 border-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black shadow-lg tracking-wide bg-white text-black hover:bg-black hover:text-white hover:border-white active:scale-95 text-sm"
-                    >
-                      Load Captcha
-                    </button>
-                    <p className="text-white/60 text-xs">If captcha doesn't load automatically, click this button</p>
-                    <div className="text-white/40 text-xs">
-                      <p>Debug info:</p>
-                      <p>reCAPTCHA loaded: {typeof window.grecaptcha !== 'undefined' ? 'Yes' : 'No'}</p>
-                      <p>Container exists: {document.getElementById('recaptcha-container') ? 'Yes' : 'No'}</p>
-                    </div>
-                    <button
-                      onClick={reloadRecaptchaScript}
-                      className="px-3 py-1 rounded text-xs border border-yellow-500/50 bg-yellow-500/20 text-yellow-200 hover:bg-yellow-500/30 transition-all duration-200"
-                    >
-                      Reload reCAPTCHA Script
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
-                <p className="text-yellow-200 text-sm">
-                  Captcha is not properly configured. Please contact support or try again later.
-                </p>
+            
+            {error && error.includes("captcha") && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                <p className="text-red-200 text-sm">{error}</p>
               </div>
             )}
+            
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => {
                   setShowCaptcha(false);
                   setCaptchaResponse(null);
+                  setError(null);
                 }}
-                className={buttonBase}
+                className="px-4 py-2 rounded-lg border border-white/30 bg-white/10 text-white backdrop-blur-sm shadow transition-all duration-200 hover:border-white/50 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black font-medium tracking-wide"
+                disabled={loading}
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
-                  if (captchaResponse) {
-                    setShowCaptcha(false);
-                    handleSyncEmails();
+                  if (captchaResponse === "5") {
+                    performSync();
+                  } else {
+                    setError("Incorrect answer. Please try again.");
+                    setCaptchaResponse("");
                   }
                 }}
-                disabled={!captchaResponse}
-                className={buttonBase + (!captchaResponse ? ' opacity-50 cursor-not-allowed' : '')}
+                disabled={!captchaResponse || loading}
+                className="px-4 py-2 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-200 backdrop-blur-sm shadow transition-all duration-200 hover:border-blue-500/50 hover:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-black font-medium tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Continue Sync
+                {loading ? "Syncing..." : "Sync Emails"}
               </button>
             </div>
           </div>

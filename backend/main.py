@@ -934,7 +934,7 @@ def oauth2callback(request: Request, code: str):
 
     # Redirect to frontend with success indicator
     # Try different possible frontend URLs
-    redirect_url = f"{FRONTEND_URL}/dashboard#auth_success=true"
+    redirect_url = f"{FRONTEND_URL}/dashboard#auth_success=true&user_email={user_id}"
     print(f"Redirecting to: {redirect_url}")
     return RedirectResponse(redirect_url)
 
