@@ -335,12 +335,12 @@ const Dashboard = () => {
       setShowCaptcha(false);
       setCaptchaRendered(false);
       
-      // Refresh dashboard data after sync
-      await fetchDashboard();
-      
-      // Show success message
-      setError(`Successfully synced ${result.emails_synced || 0} emails!`);
-      setTimeout(() => setError(null), 3000);
+  // Refresh dashboard data and captcha config after sync
+  await fetchDashboard();
+  await fetchCaptchaConfig();
+  // Show success message
+  setError(`Successfully synced ${result.emails_synced || 0} emails!`);
+  setTimeout(() => setError(null), 3000);
       
     } catch (error) {
       console.error("Sync error:", error);
