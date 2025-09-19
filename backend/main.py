@@ -1061,57 +1061,6 @@ def get_dashboard(request: Request):
 
 from fastapi import Body
 
-@app.post("/sync-emails")
-@limiter.limit("10/minute")  # Rate limit: 10 requests per minute
-def sync_emails(request: Request, background_tasks: BackgroundTasks, captcha_data: dict = Body(None)):
-    """Sync emails from Gmail API to Supabase database with captcha verification"""
-    if not user_tokens:
-        raise HTTPException(status_code=401, detail="User not authenticated")
-    user_id = list(user_tokens.keys())[0]  # Get the first authenticated user
-    
-    # Check rate limit
-    if not check_sync_rate_limit(user_id):
-        raise HTTPException(
-            status_code=429, 
-            detail="Too many sync attempts. Please wait before trying again."
-        )
-    
-    # Verify captcha if provided
-    if captcha_data and captcha_data.get("captcha_response"):
-        captcha_response = captcha_data["captcha_response"]
-        
-        # Allow "skipped" for development/testing
-        if captcha_response == "skipped":
-            print("Captcha verification skipped for development")
-        else:
-            client_ip = get_remote_address(request)
-            if not verify_recaptcha(captcha_response, client_ip):
-                raise HTTPException(status_code=400, detail="Invalid captcha verification")
-    elif RECAPTCHA_SECRET_KEY:
-        # If captcha is configured but not provided, require it
-        raise HTTPException(status_code=400, detail="Captcha verification required")
-    
-    token_data = user_tokens[user_id]
-    credentials = Credentials(
-        token=token_data["access_token"],
-        refresh_token=token_data["refresh_token"],
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=os.getenv("CLIENT_ID"),
-        client_secret=os.getenv("CLIENT_SECRET"),
-        scopes=token_data["scopes"]
-    )
-    
-    access_token = refresh_token_if_needed(credentials)
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Token refresh failed. Please log in again.")
-    
-    # Sync emails from Gmail to Supabase
-    result = sync_emails_from_gmail(access_token, user_id, background_tasks)
-    
-    if "error" in result:
-        raise HTTPException(status_code=500, detail=result["error"])
-    
-    return result
 
 @app.get("/debug/emails")
 def debug_emails():
