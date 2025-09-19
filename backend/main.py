@@ -1059,9 +1059,11 @@ def get_dashboard(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+from fastapi import Body
+
 @app.post("/sync-emails")
 @limiter.limit("10/minute")  # Rate limit: 10 requests per minute
-def sync_emails(request: Request, background_tasks: BackgroundTasks, captcha_data: dict = None):
+def sync_emails(request: Request, background_tasks: BackgroundTasks, captcha_data: dict = Body(None)):
     """Sync emails from Gmail API to Supabase database with captcha verification"""
     if not user_tokens:
         raise HTTPException(status_code=401, detail="User not authenticated")
