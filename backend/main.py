@@ -174,7 +174,7 @@ def healthz():
 origins = {
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    FRONTEND_URL,  # ← your Vercel domain via env
+    "https://mail-pilot-eight.vercel.app",  # ← your Vercel domain via env
 }
 
 app.add_middleware(
