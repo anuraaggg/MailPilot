@@ -31,9 +31,6 @@ const Dashboard = () => {
     const authSuccess = params.get("auth_success") || hashParams.get("auth_success");
     const userEmailFromHash = hashParams.get("user_email");
 
-    console.log("Current URL:", window.location.href);
-    console.log("auth_success param:", authSuccess);
-
     if (userEmailFromHash) {
       sessionStorage.setItem("mailpilot_user_email", userEmailFromHash);
     }
@@ -116,53 +113,36 @@ const Dashboard = () => {
     try {
       const res = await fetch(`${API_URL}/captcha/config`);
       if (!res.ok) {
-        console.log("Captcha config endpoint not available:", res.status);
         setCaptchaConfig({ enabled: false, site_key: null });
         return;
       }
       
       const config = await res.json();
-      console.log("Captcha config received:", config);
       setCaptchaConfig(config);
       
       // Set up global captcha callbacks
       if (config.enabled && config.site_key) {
-        console.log("Setting up captcha callbacks with site key:", config.site_key);
-        
-        // Set up global callbacks
         window.onCaptchaSuccess = (token) => {
-          console.log("Captcha success callback triggered, token:", token);
           setCaptchaResponse(token);
         };
         
         window.onCaptchaExpired = () => {
-          console.log("Captcha expired callback triggered");
           setCaptchaResponse(null);
         };
         
-        // Also set up error callback
         window.onCaptchaError = (error) => {
-          console.log("Captcha error callback triggered:", error);
           setCaptchaResponse(null);
         };
         
         // Check if reCAPTCHA script is loaded
         const checkRecaptchaLoaded = () => {
-          if (typeof window.grecaptcha !== 'undefined') {
-            console.log("reCAPTCHA script is loaded and ready");
-            return true;
-          }
-          return false;
+          return typeof window.grecaptcha !== 'undefined';
         };
         
-        if (checkRecaptchaLoaded()) {
-          console.log("reCAPTCHA already loaded");
-        } else {
-          console.log("reCAPTCHA not loaded, waiting for script...");
-          // Wait for reCAPTCHA to load with more frequent checks
+        if (!checkRecaptchaLoaded()) {
+          // Wait for reCAPTCHA to load
           const checkInterval = setInterval(() => {
             if (checkRecaptchaLoaded()) {
-              console.log("reCAPTCHA loaded after waiting");
               clearInterval(checkInterval);
             }
           }, 500);
@@ -170,13 +150,8 @@ const Dashboard = () => {
           // Clear interval after 15 seconds
           setTimeout(() => {
             clearInterval(checkInterval);
-            if (!checkRecaptchaLoaded()) {
-              console.error("reCAPTCHA failed to load after 15 seconds");
-            }
           }, 15000);
         }
-      } else {
-        console.log("Captcha disabled or no site key - config:", config);
       }
     } catch (err) {
       console.error("Failed to fetch captcha config:", err);
@@ -187,20 +162,11 @@ const Dashboard = () => {
   // Auto-render captcha when modal opens
   useEffect(() => {
     if (showCaptcha && captchaConfig?.enabled && captchaConfig?.site_key && !captchaRendered) {
-      console.log("Modal opened, attempting to render captcha...");
-      console.log("Captcha config:", captchaConfig);
-      console.log("reCAPTCHA available:", typeof window.grecaptcha !== 'undefined');
-      
       const renderCaptcha = (attempt = 1) => {
-        console.log(`Captcha render attempt ${attempt}`);
-        
         // Check if reCAPTCHA is loaded
         if (typeof window.grecaptcha === 'undefined') {
-          console.log("reCAPTCHA not loaded, waiting...");
           if (attempt < 30) { // Try for up to 15 seconds (30 * 500ms)
             setTimeout(() => renderCaptcha(attempt + 1), 500);
-          } else {
-            console.error("reCAPTCHA failed to load after 15 seconds");
           }
           return;
         }
@@ -208,19 +174,14 @@ const Dashboard = () => {
         // Check if container exists
         const container = document.getElementById('recaptcha-container');
         if (!container) {
-          console.log("Captcha container not found, waiting...");
           if (attempt < 30) {
             setTimeout(() => renderCaptcha(attempt + 1), 500);
-          } else {
-            console.error("Captcha container not found after 15 seconds");
           }
           return;
         }
         
         // Try to render captcha
         try {
-          console.log("Attempting to render captcha with site key:", captchaConfig.site_key);
-          
           // Clear any existing captcha
           if (container.hasChildNodes()) {
             container.innerHTML = '';
@@ -236,15 +197,11 @@ const Dashboard = () => {
           });
           
           setCaptchaRendered(true);
-          console.log("Captcha rendered successfully with widget ID:", widgetId);
           
         } catch (error) {
           console.error("Error rendering captcha:", error);
           if (attempt < 5) {
-            console.log(`Retrying captcha render in 1 second (attempt ${attempt + 1}/5)`);
             setTimeout(() => renderCaptcha(attempt + 1), 1000);
-          } else {
-            console.error("Failed to render captcha after 5 attempts");
           }
         }
       };

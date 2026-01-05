@@ -296,40 +296,11 @@ def check_sync_rate_limit(user_id: str) -> bool:
     sync_attempts[user_id].append(current_time)
     return True
 
-import requests
-from datetime import datetime
-from email.utils import parsedate_to_datetime
-
-import requests
-from datetime import datetime
 from email.utils import parsedate_to_datetime
 
 MAX_EMAILS_PER_USER = 500   # how many emails to keep per user
 TARGET_FETCH = 10           # how many emails to fetch each sync
-BATCH_SIZE = 10   
-
-def trim_old_emails(user_id: str):
-    try:
-        result = (
-            supabase.table("emails")
-            .select("message_id, date")
-            .eq("user_id", user_id)
-            .order("date", desc=True)
-            .limit(MAX_EMAILS_PER_USER)
-            .execute()
-        )
-        if not result.data:
-            return
-
-        keep_ids = [row["message_id"] for row in result.data]
-        supabase.table("emails") \
-            .delete() \
-            .eq("user_id", user_id) \
-            .not_.in_("message_id", keep_ids) \
-            .execute()
-        print(f"Trimmed old emails for {user_id}, kept {MAX_EMAILS_PER_USER}")
-    except Exception as e:
-        print(f"Trim error for {user_id}: {e}")
+BATCH_SIZE = 10
 
 
 def sync_emails_from_gmail(access_token: str, user_id: str = "demo_user", background_tasks: BackgroundTasks = None) -> dict:
