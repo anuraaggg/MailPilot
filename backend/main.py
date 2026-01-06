@@ -14,6 +14,7 @@ def get_inbox_unread_count(access_token: str) -> int:
 import os
 import json
 import time
+import logging
 from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,10 +30,17 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 load_dotenv()  # loads CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, SUPABASE_URL, SUPABASE_KEY
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
-print("FRONTEND_URL =", FRONTEND_URL)
+logger.info(f"FRONTEND_URL = {FRONTEND_URL}")
 
 # Validate required environment variables
 required_env_vars = ["CLIENT_ID", "CLIENT_SECRET", "REDIRECT_URI", "SUPABASE_URL", "SUPABASE_KEY"]
@@ -74,10 +82,10 @@ def get_weekly_email_count(access_token: str) -> int:
             # Get the total count from resultSizeEstimate
             return data.get("resultSizeEstimate", 0)
         else:
-            print(f"Error getting weekly email count: {resp.status_code} - {resp.text}")
+            logger.error(f"Error getting weekly email count: {resp.status_code} - {resp.text}")
             return 0
     except Exception as e:
-        print(f"Exception getting weekly email count: {e}")
+        logger.error(f"Exception getting weekly email count: {e}")
         return 0
 
 def get_todays_emails(access_token: str) -> List[Dict]:
@@ -98,7 +106,7 @@ def get_todays_emails(access_token: str) -> List[Dict]:
         
         resp = requests.get(url, headers=headers, params=params)
         if not resp.ok:
-            print(f"Error getting today's emails: {resp.status_code} - {resp.text}")
+            logger.error(f"Error getting today's emails: {resp.status_code} - {resp.text}")
             return []
         
         data = resp.json()
@@ -135,14 +143,14 @@ def get_todays_emails(access_token: str) -> List[Dict]:
                         "message_id": msg_id
                     })
             except Exception as e:
-                print(f"Error processing email {msg_id}: {e}")
+                logger.error(f"Error processing email {msg_id}: {e}")
                 continue
         
-        print(f"Retrieved {len(emails)} emails from today")
+        logger.info(f"Retrieved {len(emails)} emails from today")
         return emails
         
     except Exception as e:
-        print(f"Exception getting today's emails: {e}")
+        logger.error(f"Exception getting today's emails: {e}")
         return []
 
 # Hugging Face API configuration
@@ -153,7 +161,7 @@ HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")  # Optional, for high
 RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY")
 RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify"
 
-print("Hugging Face API integration ready!")
+logger.info("Hugging Face API integration ready!")
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -170,16 +178,15 @@ def healthz():
     return {"ok": True}
 
 
-# CORS
-origins = {
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://mail-pilot-eight.vercel.app",  # ← your Vercel domain via env
-}
+# CORS - Load from environment or use defaults
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,https://mail-pilot-eight.vercel.app").split(",")
+CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS]  # Clean up whitespace
+
+logger.info(f"CORS origins configured: {CORS_ORIGINS}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list(origins),
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],   # allow all HTTP methods, including OPTIONS
     allow_headers=["*"],   # allow all headers
@@ -213,13 +220,13 @@ def refresh_token_if_needed(credentials: Credentials) -> Optional[str]:
             return credentials.token
         return credentials.token
     except Exception as e:
-        print(f"Token refresh failed: {e}")
+        logger.error(f"Token refresh failed: {e}")
         return None
 
 def verify_recaptcha(recaptcha_response: str, remote_ip: str) -> bool:
     """Verify reCAPTCHA response with Google"""
     if not RECAPTCHA_SECRET_KEY:
-        print("Warning: RECAPTCHA_SECRET_KEY not set, skipping captcha verification")
+        logger.warning("RECAPTCHA_SECRET_KEY not set, skipping captcha verification")
         return True  # Skip verification in development
     
     try:
@@ -232,11 +239,11 @@ def verify_recaptcha(recaptcha_response: str, remote_ip: str) -> bool:
         response = requests.post(RECAPTCHA_VERIFY_URL, data=data, timeout=10)
         result = response.json()
         
-        print(f"reCAPTCHA verification result: {result}")
+        logger.debug(f"reCAPTCHA verification result: {result}")
         return result.get('success', False)
         
     except Exception as e:
-        print(f"reCAPTCHA verification error: {e}")
+        logger.error(f"reCAPTCHA verification error: {e}")
         return False
 
 # Rate limiting storage (in production, use Redis)
@@ -270,10 +277,10 @@ def trim_old_emails(user_id: str):
             .execute()
         )
 
-        print(f"Trimmed old emails for {user_id}, kept only {MAX_EMAILS_PER_USER}")
+        logger.info(f"Trimmed old emails for {user_id}, kept {MAX_EMAILS_PER_USER}")
 
     except Exception as e:
-        print(f"Trim error for {user_id}: {e}")
+        logger.error(f"Trim error for {user_id}: {e}")
 
 
 def check_sync_rate_limit(user_id: str) -> bool:
@@ -323,7 +330,7 @@ def sync_emails_from_gmail(access_token: str, user_id: str = "demo_user", backgr
         if not ids:
             return {"error": "No emails found"}
 
-        print(f"[SYNC] Collected {len(ids)} message IDs from Gmail")
+        logger.info(f"[SYNC] Collected {len(ids)} message IDs from Gmail")
 
         # --- Step 2: Batch metadata fetch ---
         r = requests.post(
@@ -336,12 +343,12 @@ def sync_emails_from_gmail(access_token: str, user_id: str = "demo_user", backgr
         messages_full = []
         if r.status_code == 200:
             messages_full = r.json().get("messages", []) or []
-            print(f"[SYNC] BatchGet returned {len(messages_full)} messages")
+            logger.debug(f"[SYNC] BatchGet returned {len(messages_full)} messages")
 
             # Fallback for missing messages
             if len(messages_full) < len(ids):
                 missing_ids = list(set(ids) - {m.get("id") for m in messages_full})
-                print(f"[SYNC] BatchGet missed {len(missing_ids)} messages, fetching individually...")
+                logger.info(f"[SYNC] BatchGet missed {len(missing_ids)} messages, fetching individually...")
                 for mid in missing_ids:
                     try:
                         r_one = requests.get(
@@ -353,14 +360,14 @@ def sync_emails_from_gmail(access_token: str, user_id: str = "demo_user", backgr
                         if r_one.status_code == 200:
                             messages_full.append(r_one.json())
                         else:
-                            print(f"[SYNC] Individual fetch failed for {mid}: {r_one.status_code}")
+                            logger.warning(f"[SYNC] Individual fetch failed for {mid}: {r_one.status_code}")
                     except Exception as e:
-                        print(f"[SYNC] Error fetching {mid}: {e}")
+                        logger.error(f"[SYNC] Error fetching {mid}: {e}")
         else:
-            print(f"[SYNC] Batch fetch failed with {r.status_code}, falling back to individual requests")
+            logger.warning(f"[SYNC] Batch fetch failed with {r.status_code}, falling back to individual requests")
             for i, mid in enumerate(ids):
                 if i % 10 == 0:
-                    print(f"[SYNC] Fallback progress: {i}/{len(ids)}")
+                    logger.debug(f"[SYNC] Fallback progress: {i}/{len(ids)}")
                 try:
                     r_one = requests.get(
                         f"{base_url}/{mid}",
