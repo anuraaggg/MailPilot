@@ -68,8 +68,6 @@ const Dashboard = () => {
   const authStatusRes = await fetch(`${API_URL}/auth/status`);
       const authStatus = await authStatusRes.json();
       
-      console.log("Auth status:", authStatus);
-      
       if (!authStatus.authenticated) {
         setError("Authentication not found on server. Please log in again.");
         setIsAuthenticated(false);
@@ -252,14 +250,12 @@ const Dashboard = () => {
 
   const handleSyncEmails = async () => {
     // Always show captcha modal first
-    console.log("Sync button clicked, showing captcha modal");
     setShowCaptcha(true);
   };
 
   const performSync = async () => {
     try {
       setLoading(true);
-      console.log("Performing sync with captcha response:", captchaResponse);
       
       // Prepare request body
       const requestBody = captchaResponse ? { captcha_response: captchaResponse } : {};
@@ -270,11 +266,8 @@ const Dashboard = () => {
         body: JSON.stringify(requestBody)
       });
       
-      console.log("Sync response status:", response.status);
-      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.log("Sync error response:", errorData);
         
         if (response.status === 429) {
           throw new Error("Too many sync attempts. Please wait before trying again.");
@@ -285,7 +278,6 @@ const Dashboard = () => {
       }
       
       const result = await response.json();
-      console.log("Sync result:", result);
       
       // Reset captcha after successful sync
       setCaptchaResponse(null);
