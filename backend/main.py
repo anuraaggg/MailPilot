@@ -378,20 +378,20 @@ def sync_emails_from_gmail(access_token: str, user_id: str = "demo_user", backgr
                     if r_one.status_code == 200:
                         messages_full.append(r_one.json())
                 except Exception as e:
-                    print(f"[SYNC] Error fetching {mid}: {e}")
+                    logger.error(f"[SYNC] Error fetching {mid}: {e}")
 
-        print(f"[SYNC] Retrieved {len(messages_full)} messages from Gmail")
+        logger.info(f"[SYNC] Retrieved {len(messages_full)} messages from Gmail")
 
         if not messages_full:
             return {"error": "No messages retrieved from Gmail API"}
 
-        # Debug: Print first few email subjects to see what we're getting
-        print(f"[SYNC] Sample of fetched emails:")
+        # Log first few email subjects
+        logger.debug(f"[SYNC] Sample of fetched emails:")
         for i, msg in enumerate(messages_full[:5]):
             headers_map = {h["name"]: h["value"] for h in msg.get("payload", {}).get("headers", [])}
             subject = headers_map.get("Subject", "No Subject")
             from_email = headers_map.get("From", "Unknown Sender")
-            print(f"  {i+1}. {from_email} | {subject}")
+            logger.debug(f"  {i+1}. {from_email} | {subject}")
         
 
         # --- Step 3: Normalize ---
@@ -419,7 +419,7 @@ def sync_emails_from_gmail(access_token: str, user_id: str = "demo_user", backgr
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
 
-        print(f"[SYNC] Normalized {len(emails_to_store)} messages")
+        logger.debug(f"[SYNC] Normalized {len(emails_to_store)} messages")
 
         # --- Step 4: Insert into Supabase (with manual dedup) ---
         if emails_to_store:
@@ -429,32 +429,32 @@ def sync_emails_from_gmail(access_token: str, user_id: str = "demo_user", backgr
                 existing_result = supabase.table("emails").select("message_id, subject").eq("user_id", user_id).execute()
                 if existing_result.data:
                     existing_ids = {row["message_id"] for row in existing_result.data}
-                    print(f"[SYNC] Found {len(existing_ids)} existing emails in database")
-                    # Debug: Show some existing email subjects
-                    print(f"[SYNC] Sample existing emails:")
+                    logger.debug(f"[SYNC] Found {len(existing_ids)} existing emails in database")
+                    # Log some existing email subjects
+                    logger.debug(f"[SYNC] Sample existing emails:")
                     for row in existing_result.data[:3]:
-                        print(f"  - {row['subject'][:50]}... | ID: {row['message_id']}")
+                        logger.debug(f"  - {row['subject'][:50]}... | ID: {row['message_id']}")
                 else:
-                    print(f"[SYNC] No existing emails in database")
+                    logger.debug(f"[SYNC] No existing emails in database")
             except Exception as e:
-                print(f"[SYNC] Warning: Could not check existing emails: {e}")
+                logger.warning(f"[SYNC] Could not check existing emails: {e}")
             
             # Filter out emails that already exist
             new_emails = [email for email in emails_to_store if email["message_id"] not in existing_ids]
-            print(f"[SYNC] {len(new_emails)} new emails to insert (filtered from {len(emails_to_store)})")
+            logger.info(f"[SYNC] {len(new_emails)} new emails to insert (filtered from {len(emails_to_store)})")
             
-            # Debug: Show which emails are being filtered out
+            # Log which emails are being filtered out
             if len(new_emails) < len(emails_to_store):
                 filtered_out = [email for email in emails_to_store if email["message_id"] in existing_ids]
-                print(f"[SYNC] Filtered out {len(filtered_out)} existing emails:")
+                logger.debug(f"[SYNC] Filtered out {len(filtered_out)} existing emails:")
                 for email in filtered_out[:5]:  # Show first 5
-                    print(f"  - {email['from_email']} | {email['subject'][:50]}... | ID: {email['message_id']}")
+                    logger.debug(f"  - {email['from_email']} | {email['subject'][:50]}... | ID: {email['message_id']}")
             
-            # Debug: Show which emails are new
+            # Log which emails are new
             if new_emails:
-                print(f"[SYNC] New emails to insert:")
+                logger.debug(f"[SYNC] New emails to insert:")
                 for email in new_emails[:5]:  # Show first 5
-                    print(f"  + {email['from_email']} | {email['subject'][:50]}... | ID: {email['message_id']}")
+                    logger.debug(f"  + {email['from_email']} | {email['subject'][:50]}... | ID: {email['message_id']}")
             
             
             if new_emails:
@@ -464,18 +464,18 @@ def sync_emails_from_gmail(access_token: str, user_id: str = "demo_user", backgr
                     batch = new_emails[i:i + batch_size]
                     try:
                         supabase.table("emails").insert(batch).execute()
-                        print(f"[SYNC] Inserted batch {i//batch_size + 1}: {len(batch)} emails")
+                        logger.info(f"[SYNC] Inserted batch {i//batch_size + 1}: {len(batch)} emails")
                     except Exception as e:
-                        print(f"[SYNC] Error inserting batch {i//batch_size + 1}: {e}")
+                        logger.error(f"[SYNC] Error inserting batch {i//batch_size + 1}: {e}")
                         # Try inserting one by one if batch fails
                         for email in batch:
                             try:
                                 supabase.table("emails").insert([email]).execute()
-                                print(f"[SYNC] Inserted individual email: {email['subject'][:30]}...")
+                                logger.debug(f"[SYNC] Inserted individual email: {email['subject'][:30]}...")
                             except Exception as e2:
-                                print(f"[SYNC] Failed to insert individual email: {e2}")
+                                logger.error(f"[SYNC] Failed to insert individual email: {e2}")
             else:
-                print(f"[SYNC] No new emails to insert")
+                logger.debug(f"[SYNC] No new emails to insert")
 
         # --- Step 5: Background summaries ---
         if background_tasks and emails_to_store:
@@ -495,13 +495,14 @@ def sync_emails_from_gmail(access_token: str, user_id: str = "demo_user", backgr
         }
 
     except Exception as e:
-        print(f"[SYNC] Fatal error: {e}")
+        logger.error(f"[SYNC] Fatal error: {e}")
         return {"error": f"Sync failed: {str(e)}"}
+
 
 
 def generate_summaries_in_background(user_id: str, message_ids: list):
     """Slow background task: generate summaries and update Supabase."""
-    print(f"[BG] Summarizing {len(message_ids)} emails for {user_id}...")
+    logger.info(f"[BG] Summarizing {len(message_ids)} emails for {user_id}...")
     for mid in message_ids:
         try:
             resp = supabase.table("emails").select("*").eq("user_id", user_id).eq("message_id", mid).single().execute()
@@ -512,9 +513,9 @@ def generate_summaries_in_background(user_id: str, message_ids: list):
             summary = generate_email_summary(email["subject"], email["snippet"])
 
             supabase.table("emails").update({"summary": summary}).eq("message_id", mid).execute()
-            print(f"[BG] Done: {email['subject'][:40]}...")
+            logger.debug(f"[BG] Done: {email['subject'][:40]}...")
         except Exception as e:
-            print(f"[BG] Error summarizing {mid}: {e}")
+            logger.error(f"[BG] Error summarizing {mid}: {e}")
 
 
 def get_emails_from_supabase(user_id: str = "demo_user", limit: int = 5) -> List[Dict]:
@@ -524,13 +525,13 @@ def get_emails_from_supabase(user_id: str = "demo_user", limit: int = 5) -> List
         result = supabase.table("emails").select("*").eq("user_id", user_id).order("date", desc=True).limit(limit).execute()
         return result.data if result.data else []
     except Exception as e:
-        print(f"Supabase query error: {e}")
+        logger.error(f"Supabase query error: {e}")
         # Fallback to created_at ordering if date ordering fails
         try:
             result = supabase.table("emails").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
             return result.data if result.data else []
         except Exception as e2:
-            print(f"Fallback query error: {e2}")
+            logger.error(f"Fallback query error: {e2}")
         return []
 
 def get_user_keywords(user_id: str = "demo_user") -> List[str]:
@@ -539,7 +540,7 @@ def get_user_keywords(user_id: str = "demo_user") -> List[str]:
         result = supabase.table("keywords").select("keyword").eq("user_id", user_id).execute()
         return [row["keyword"] for row in result.data] if result.data else []
     except Exception as e:
-        print(f"Keywords query error: {e}")
+        logger.error(f"Keywords query error: {e}")
         return []
 
 def add_user_keyword(user_id: str, keyword: str) -> Dict:
@@ -559,7 +560,7 @@ def add_user_keyword(user_id: str, keyword: str) -> Dict:
         
         return {"success": True, "message": f"Keyword '{keyword}' added successfully"}
     except Exception as e:
-        print(f"Add keyword error: {e}")
+        logger.error(f"Add keyword error: {e}")
         return {"error": f"Failed to add keyword: {str(e)}"}
 
 def remove_user_keyword(user_id: str, keyword: str) -> Dict:
@@ -568,7 +569,7 @@ def remove_user_keyword(user_id: str, keyword: str) -> Dict:
         result = supabase.table("keywords").delete().eq("user_id", user_id).eq("keyword", keyword.lower().strip()).execute()
         return {"success": True, "message": f"Keyword '{keyword}' removed successfully"}
     except Exception as e:
-        print(f"Remove keyword error: {e}")
+        logger.error(f"Remove keyword error: {e}")
         return {"error": f"Failed to remove keyword: {str(e)}"}
 
 def get_active_users_from_database() -> Dict:
@@ -589,9 +590,9 @@ def get_active_users_from_database() -> Dict:
         # Combine both sets to get all unique users
         all_unique_users = email_user_ids.union(keyword_user_ids)
         
-        print(f"Active users from database: {len(all_unique_users)} unique users")
-        print(f"Users with emails: {len(email_user_ids)}")
-        print(f"Users with keywords: {len(keyword_user_ids)}")
+        logger.debug(f"Active users from database: {len(all_unique_users)} unique users")
+        logger.debug(f"Users with emails: {len(email_user_ids)}")
+        logger.debug(f"Users with keywords: {len(keyword_user_ids)}")
         
         return {
             "activeUsers": len(all_unique_users),
@@ -599,7 +600,7 @@ def get_active_users_from_database() -> Dict:
             "unique_user_ids": list(all_unique_users)
         }
     except Exception as e:
-        print(f"Error getting active users from database: {e}")
+        logger.error(f"Error getting active users from database: {e}")
         # Fallback to in-memory count
         return {
             "activeUsers": len(user_tokens),
@@ -611,24 +612,24 @@ def get_important_emails(user_id: str = "demo_user", limit: int = 3) -> List[Dic
     """Get emails that contain user's keywords"""
     try:
         keywords = get_user_keywords(user_id)
-        print(f"User keywords: {keywords}")
+        logger.debug(f"User keywords: {keywords}")
         
         if not keywords:
-            print("No keywords found for user")
+            logger.debug("No keywords found for user")
             return []
         
         # Get all emails for the user ordered by date (newest first)
         try:
             all_emails = supabase.table("emails").select("*").eq("user_id", user_id).order("date", desc=True).execute()
         except Exception as e:
-            print(f"Date ordering failed, trying created_at: {e}")
+            logger.debug(f"Date ordering failed, trying created_at: {e}")
             all_emails = supabase.table("emails").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
         
         if not all_emails.data:
-            print("No emails found in database")
+            logger.debug("No emails found in database")
             return []
         
-        print(f"Checking {len(all_emails.data)} emails against keywords")
+        logger.debug(f"Checking {len(all_emails.data)} emails against keywords")
         
         # Filter emails that contain any of the keywords
         important_emails = []
@@ -643,15 +644,15 @@ def get_important_emails(user_id: str = "demo_user", limit: int = 3) -> List[Dic
                 if (keyword_lower in subject or 
                     keyword_lower in snippet or 
                     keyword_lower in from_email):
-                    print(f"Found match: '{keyword}' in email '{subject[:30]}...'")
+                    logger.debug(f"Found match: '{keyword}' in email '{subject[:30]}...'")
                     important_emails.append(email)
                     break
         
-        print(f"Found {len(important_emails)} important emails")
+        logger.debug(f"Found {len(important_emails)} important emails")
         # Return the most recent important emails
         return important_emails[:limit]
     except Exception as e:
-        print(f"Important emails query error: {e}")
+        logger.error(f"Important emails query error: {e}")
         return []
 
 def generate_email_summary(subject: str, snippet: str) -> str:
@@ -687,28 +688,28 @@ def generate_email_summary(subject: str, snippet: str) -> str:
                 summary = result[0]['summary_text']
                 return summary
             else:
-                print(f"Unexpected API response format: {result}")
+                logger.warning(f"Unexpected API response format: {result}")
                 return snippet[:100] + "..." if len(snippet) > 100 else snippet
         else:
-            print(f"Hugging Face API error: {response.status_code} - {response.text}")
+            logger.error(f"Hugging Face API error: {response.status_code} - {response.text}")
             return snippet[:100] + "..." if len(snippet) > 100 else snippet
             
     except requests.exceptions.Timeout:
-        print("Hugging Face API timeout")
+        logger.warning("Hugging Face API timeout")
         return snippet[:100] + "..." if len(snippet) > 100 else snippet
     except Exception as e:
-        print(f"Summarization error: {e}")
+        logger.error(f"Summarization error: {e}")
         # Fallback to snippet if summarization fails
         return snippet[:100] + "..." if len(snippet) > 100 else snippet
 
 def generate_daily_summary(todays_emails: List[Dict], weekly_count: int, keywords: List[str]) -> str:
     """Generate a comprehensive daily summary using today's emails and keywords"""
     try:
-        print(f"DEBUG: generate_daily_summary called with {len(todays_emails)} emails, {len(keywords)} keywords")
-        print(f"DEBUG: Keywords: {keywords}")
+        logger.debug(f"generate_daily_summary called with {len(todays_emails)} emails, {len(keywords)} keywords")
+        logger.debug(f"Keywords: {keywords}")
         
         if not todays_emails:
-            print("DEBUG: No today's emails, returning basic summary")
+            logger.debug("No today's emails, returning basic summary")
             return f"You received {weekly_count} emails this week. No emails received today."
         
         # Categorize emails by keywords
@@ -716,21 +717,14 @@ def generate_daily_summary(todays_emails: List[Dict], weekly_count: int, keyword
         general_emails = []
         keyword_matches = {}
         
-        print(f"DEBUG: Processing {len(todays_emails)} emails for keyword matching")
+        logger.debug(f"Processing {len(todays_emails)} emails for keyword matching")
         
         for i, email in enumerate(todays_emails):
             subject = email.get("subject", "").lower()
             snippet = email.get("snippet", "").lower()
             from_email = email.get("from_email", "").lower()
             
-            print(f"DEBUG: Processing email {i+1}: Subject='{subject[:50]}...', From='{from_email[:30]}...'")
-            
-            # Check which keywords this email matches
-            matched_keywords = []
-            for keyword in keywords:
-                keyword_lower = keyword.lower().strip()
-                # More flexible matching - check for partial matches and variations
-                if (keyword_lower in subject or 
+            logger.debug(f"Processing email {i+1}: Subject='{subject[:50]}...', From='{from_email[:30]}...'")
                     keyword_lower in snippet or 
                     keyword_lower in from_email or
                     any(word in subject for word in keyword_lower.split()) or
@@ -739,15 +733,14 @@ def generate_daily_summary(todays_emails: List[Dict], weekly_count: int, keyword
                     if keyword not in keyword_matches:
                         keyword_matches[keyword] = []
                     keyword_matches[keyword].append(email)
-                    print(f"DEBUG: Email matched keyword '{keyword}': Subject='{subject[:50]}...', Snippet='{snippet[:50]}...'")
-            
+                    logger.debug(f"Email matched keyword '{keyword}': Subject='{subject[:50]}...', Snippet='{snippet[:50]}...'")
             if matched_keywords:
                 important_emails.append(email)
             else:
                 general_emails.append(email)
         
-        print(f"DEBUG: Keyword matching results - Important: {len(important_emails)}, General: {len(general_emails)}")
-        print(f"DEBUG: Keyword matches: {keyword_matches}")
+        logger.debug(f"Keyword matching results - Important: {len(important_emails)}, General: {len(general_emails)}")
+        logger.debug(f"Keyword matches: {keyword_matches}")
         
         # Build comprehensive paragraph-style summary
         summary_parts = []
@@ -834,7 +827,7 @@ def generate_daily_summary(todays_emails: List[Dict], weekly_count: int, keyword
         return ". ".join(summary_parts) + "."
         
     except Exception as e:
-        print(f"Daily summary generation error: {e}")
+        logger.error(f"Daily summary generation error: {e}")
         return f"You received {len(todays_emails) if todays_emails else 0} emails today. {weekly_count} total this week."
 
 
@@ -843,9 +836,8 @@ def login():
     flow = create_flow()
     auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
 
-    # 🔍 Debug prints
-    print(f"DEBUG Redirect URI in use: {os.getenv('REDIRECT_URI')!r}")
-    print(f"DEBUG Generated auth_url: {auth_url}")
+    logger.debug(f"Redirect URI: {os.getenv('REDIRECT_URI')!r}")
+    logger.debug(f"Generated auth_url: {auth_url}")
 
     return {"auth_url": auth_url}
 
@@ -860,7 +852,7 @@ def oauth2callback(request: Request, code: str):
     try:
         flow.fetch_token(code=code)
     except Exception as e:
-        print(f"OAuth error: {e}")
+        logger.error(f"OAuth error: {e}")
         return JSONResponse({"error": "Failed to exchange authorization code for tokens"}, status_code=400)
 
     credentials = flow.credentials
@@ -876,9 +868,9 @@ def oauth2callback(request: Request, code: str):
             os.getenv("CLIENT_ID")
         )
         user_id = id_info.get("email")
-        print(f"Extracted user email from ID token: {user_id}")
+        logger.debug(f"Extracted user email from ID token: {user_id}")
     except Exception as e:
-        print(f"Failed to extract user email from ID token: {e}")
+        logger.warning(f"Failed to extract user email from ID token: {e}")
         user_id = "demo_user"
 
     user_tokens[user_id] = {
@@ -888,32 +880,31 @@ def oauth2callback(request: Request, code: str):
         "scopes": credentials.scopes
     }
 
-    print(f"OAuth successful! Stored token for user: {user_id}")
-    print(f"Token data: {user_tokens[user_id]}")
+    logger.info(f"OAuth successful! Stored token for user: {user_id}")
+    logger.debug(f"Token data: {user_tokens[user_id]}")
     
     # Verify token storage before redirecting
     if user_id in user_tokens and user_tokens[user_id].get("access_token"):
-        print("Token storage verified successfully")
+        logger.debug("Token storage verified successfully")
         
         # Trigger automatic sync after successful login
         try:
-            print("Starting automatic email sync after login...")
+            logger.debug("Starting automatic email sync after login...")
             # Create a dummy background tasks for auto-sync
             from fastapi import BackgroundTasks
             dummy_background_tasks = BackgroundTasks()
             sync_result = sync_emails_from_gmail(credentials.token, user_id, dummy_background_tasks)
-            print(f"Auto-sync result: {sync_result}")
+            logger.info(f"Auto-sync result: {sync_result}")
         except Exception as e:
-            print(f"Auto-sync failed (non-critical): {e}")
+            logger.warning(f"Auto-sync failed (non-critical): {e}")
             # Don't fail the login if sync fails
     else:
-        print("ERROR: Token storage failed!")
+        logger.error("Token storage failed")
         return JSONResponse({"error": "Failed to store authentication tokens"}, status_code=500)
 
     # Redirect to frontend with success indicator
-    # Try different possible frontend URLs
     redirect_url = f"{FRONTEND_URL}/dashboard#auth_success=true&user_email={user_id}"
-    print(f"Redirecting to: {redirect_url}")
+    logger.debug(f"Redirecting to: {redirect_url}")
     return RedirectResponse(redirect_url)
 
 
@@ -927,11 +918,11 @@ def get_dashboard(request: Request):
     try:
         # Get emails from Supabase database
         emails = get_emails_from_supabase(user_id, limit=5)
-        print(f"Retrieved {len(emails)} emails from Supabase for dashboard")
+        logger.debug(f"Retrieved {len(emails)} emails from Supabase for dashboard")
         
         # If no emails in database, trigger a sync
         if not emails:
-            print("No emails found in database, triggering automatic sync...")
+            logger.debug("No emails found in database, triggering automatic sync...")
             try:
                 token_data = user_tokens[user_id]
                 credentials = Credentials(
@@ -949,13 +940,13 @@ def get_dashboard(request: Request):
                     from fastapi import BackgroundTasks
                     dummy_background_tasks = BackgroundTasks()
                     sync_result = sync_emails_from_gmail(access_token, user_id, dummy_background_tasks)
-                    print(f"Auto-sync result: {sync_result}")
+                    logger.debug(f"Auto-sync result: {sync_result}")
                     
                     # Re-fetch emails after sync
                     emails = get_emails_from_supabase(user_id, limit=5)
-                    print(f"After sync, retrieved {len(emails)} emails from Supabase")
+                    logger.debug(f"After sync, retrieved {len(emails)} emails from Supabase")
             except Exception as e:
-                print(f"Auto-sync failed: {e}")
+                logger.error(f"Auto-sync failed: {e}")
                 # Continue with empty emails list
         
         # Get weekly email count from Gmail API
@@ -975,13 +966,13 @@ def get_dashboard(request: Request):
         if access_token:
             try:
                 weekly_email_count = get_weekly_email_count(access_token)
-                print(f"Weekly email count: {weekly_email_count}")
+                logger.debug(f"Weekly email count: {weekly_email_count}")
                 
                 # Get today's emails for better summary
                 todays_emails = get_todays_emails(access_token)
-                print(f"Today's emails: {len(todays_emails)}")
+                logger.debug(f"Today's emails: {len(todays_emails)}")
             except Exception as e:
-                print(f"Error getting email data: {e}")
+                logger.error(f"Error getting email data: {e}")
 
         # Get important emails based on user keywords
         important_emails = get_important_emails(user_id, limit=3)
@@ -1015,11 +1006,11 @@ def get_dashboard(request: Request):
             daily_summary = f"You received {weekly_email_count} emails this week. Sync your emails to see them here."
         else:
             # Generate summary using today's emails and keywords
-            print(f"DEBUG: Generating summary with {len(todays_emails)} today's emails and {len(user_keywords)} keywords")
-            print(f"DEBUG: Keywords: {user_keywords}")
-            print(f"DEBUG: Today's emails sample: {todays_emails[:2] if todays_emails else 'None'}")
+            logger.debug(f"Generating summary with {len(todays_emails)} today's emails and {len(user_keywords)} keywords")
+            logger.debug(f"Keywords: {user_keywords}")
+            logger.debug(f"Today's emails sample: {todays_emails[:2] if todays_emails else 'None'}")
             daily_summary = generate_daily_summary(todays_emails, weekly_email_count, user_keywords)
-            print(f"DEBUG: Generated summary: {daily_summary}")
+            logger.debug(f"Generated summary: {daily_summary}")
 
         # Get active users from database
         active_users_data = get_active_users_from_database()
@@ -1063,14 +1054,14 @@ def debug_emails():
 
     try:
         # Fetch messages
-        print(f"Debug: Testing Gmail API with token: {access_token[:20]}...")
+        logger.debug(f"Testing Gmail API with token: {access_token[:20]}...")
         messages_resp = requests.get(
             "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5",
             headers={"Authorization": f"Bearer {access_token}"}
         )
         
-        print(f"Debug: Gmail API response status: {messages_resp.status_code}")
-        print(f"Debug: Gmail API response: {messages_resp.text[:500]}...")
+        logger.debug(f"Gmail API response status: {messages_resp.status_code}")
+        logger.debug(f"Gmail API response: {messages_resp.text[:500]}...")
         
         if messages_resp.status_code != 200:
             return {
@@ -1085,13 +1076,13 @@ def debug_emails():
         # Get first message details
         if "messages" in messages_data and len(messages_data["messages"]) > 0:
             msg_id = messages_data["messages"][0]["id"]
-            print(f"Debug: Fetching details for message {msg_id}")
+            logger.debug(f"Fetching details for message {msg_id}")
             msg_resp = requests.get(
                 f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}?format=full",
                 headers={"Authorization": f"Bearer {access_token}"}
             )
             
-            print(f"Debug: Message details response status: {msg_resp.status_code}")
+            logger.debug(f"Message details response status: {msg_resp.status_code}")
             
             return {
                 "messages_list": messages_data,
@@ -1103,7 +1094,7 @@ def debug_emails():
             return {"error": "No messages found", "messages_list": messages_data}
             
     except Exception as e:
-        print(f"Debug error: {e}")
+        logger.error(f"Debug endpoint error: {e}")
         return {"error": str(e), "traceback": str(e.__traceback__)}
 
 @app.get("/keywords")
