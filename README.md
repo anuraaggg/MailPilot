@@ -35,7 +35,7 @@ MailPilot is a Gmail companion app that fetches emails from Gmail API, stores th
 4. The API works without a token but has lower rate limits
 
 ### 4. Configure Environment Variables
-Add these to your `.env` file in the backend directory:
+Add these to your `.env` file in the backend directory (use `.env.example` as template):
 ```env
 CLIENT_ID=your_google_client_id
 CLIENT_SECRET=your_google_client_secret
@@ -43,6 +43,15 @@ REDIRECT_URI=http://127.0.0.1:8000/oauth2callback
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_KEY=your_supabase_anon_key
 HUGGINGFACE_API_TOKEN=your_huggingface_token_optional
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://yourdomain.com
+RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key_optional
+FRONTEND_URL=http://localhost:5173
+```
+
+For frontend, create `.env.local` (use `.env.example` as template):
+```env
+VITE_API_URL=http://localhost:8000
+VITE_RECAPTCHA_SITE_KEY=your_recaptcha_site_key_optional
 ```
 
 ### 5. Backend Setup

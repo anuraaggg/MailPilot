@@ -585,8 +585,8 @@ const Dashboard = () => {
     <div className="z-10 relative max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
       {data.importantEmails?.length > 0 ? (
         <div className="space-y-3">
-          {data.importantEmails.map((email, i) => (
-            <div key={i} className="group/email relative bg-white/5 p-4 rounded-xl border border-white/10 shadow-inner 
+          {data.importantEmails.map((email) => (
+            <div key={email.subject || Math.random()} className="group/email relative bg-white/5 p-4 rounded-xl border border-white/10 shadow-inner 
                                     hover:bg-white/10 hover:border-white/20 transition-all duration-300">
               {/* Glow effect */}
                <div className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover/email:opacity-100 transition-opacity duration-300" />
@@ -665,8 +665,8 @@ const Dashboard = () => {
 
     <div className="space-y-2 z-10 relative max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
       {data.keywords?.length > 0 ? (
-        data.keywords.map((kw, i) => (
-          <div key={i} className="group/keyword flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300">
+        data.keywords.map((kw) => (
+          <div key={kw} className="group/keyword flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300">
             <span className="text-white text-base font-medium">{kw}</span>
             <button
               onClick={() => handleRemoveKeyword(kw)}
@@ -722,8 +722,8 @@ const Dashboard = () => {
          <div className="z-10 relative max-h-80 overflow-y-auto scrollbar-thin">
           {data.recentEmails && data.recentEmails.length > 0 ? (
             <div className="space-y-3">
-              {data.recentEmails.map((email, i) => (
-                 <div key={i} className="group/email relative bg-white/5 p-4 rounded-xl border border-white/10 shadow-inner hover:bg-white/10 hover:border-white/20 transition-all duration-300">
+              {data.recentEmails.map((email) => (
+                 <div key={email.subject || Math.random()} className="group/email relative bg-white/5 p-4 rounded-xl border border-white/10 shadow-inner hover:bg-white/10 hover:border-white/20 transition-all duration-300">
                    {/* Email glow effect */}
                     <div className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover/email:opacity-100 transition-opacity duration-300" />
                    <div className="relative z-10">
