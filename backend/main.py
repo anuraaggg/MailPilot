@@ -725,6 +725,10 @@ def generate_daily_summary(todays_emails: List[Dict], weekly_count: int, keyword
             from_email = email.get("from_email", "").lower()
             
             logger.debug(f"Processing email {i+1}: Subject='{subject[:50]}...', From='{from_email[:30]}...'")
+            matched_keywords = []
+            for keyword in keywords:
+                keyword_lower = keyword.lower()
+                if (keyword_lower in subject or 
                     keyword_lower in snippet or 
                     keyword_lower in from_email or
                     any(word in subject for word in keyword_lower.split()) or
